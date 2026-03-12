@@ -20,14 +20,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: 22
-          source: "."
+          source: "./index.html,./js/**,./README.md"
           target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
-          rm: true
+          rm: false
           strip_components: 0
           overwrite: true
-          exclude: |
-            .git
-            .github
-            node_modules
-            update_schema.sql
-            README.md
