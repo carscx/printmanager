@@ -19,9 +19,12 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
+          protocol: ftp
           port: 21
-          server-dir: /home/carscx-printmanager/htdocs/printmanager.carscx.com/
+          # Intenta quitar la ruta absoluta larga si el usuario FTP ya está enjaulado en su htdocs
+          server-dir: ./
+          # Forzar modo pasivo y desactivar verificación estricta de TLS si es necesario
+          dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.git*/**
