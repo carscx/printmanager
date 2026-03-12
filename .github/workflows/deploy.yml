@@ -20,8 +20,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }} # O SSH_KEY si usas llaves
           port: 22
-          local_path: './*'
-          remote_path: '/home/carscx-printmanager/htdocs/printmanager.carscx.com/'
+          local_path: "./*"
+          remote_path: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
           delete_remote_files: false
-          args: '-o ConnectTimeout=5'
-
+          args: "-o ConnectTimeout=5"
