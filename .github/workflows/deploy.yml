@@ -13,12 +13,12 @@ jobs:
       - name: 🚚 Get latest code
         uses: actions/checkout@v3
 
-      - name: 📂 Sync files via SFTP (SSH)
+      - name: 📂 Sync files via SFTP (SSH Key)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_SERVER }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "./index.html,./js/**,./README.md"
           target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
