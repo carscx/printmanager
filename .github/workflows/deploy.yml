@@ -13,16 +13,14 @@ jobs:
       - name: 🚚 Get latest code
         uses: actions/checkout@v3
 
-      - name: 📂 Sync files via SFTP (SSH Key)
-        uses: appleboy/scp-action@v0.1.7
+      - name: 📂 Sync files via Rsync
+        uses: Burnett01/rsync-deployments@7.0.0
         with:
-          host: ${{ secrets.SSH_SERVER }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 60s # Aumentamos el tiempo de espera
-          command_timeout: 2m # Más tiempo para comandos pesados
-          source: "index.html,js/**,README.md"
-          target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
-          strip_components: 0
-          overwrite: true
+          switches: -avzr --delete
+          path: .
+          remote_path: /home/carscx-printmanager/htdocs/printmanager.carscx.com/
+          remote_host: ${{ secrets.SSH_SERVER }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          remote_port: 22
+          exclude: ".git* .github* node_modules update_schema.sql"
