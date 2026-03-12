@@ -2,8 +2,7 @@ import { descConfig } from "./supabase.js";
 
 const components = {
   badge(text, colorClass) {
-    if (!text) return "";
-    return `<span class="${colorClass} px-1.5 py-0.5 rounded-lg border border-current/10">${text}</span>`;
+    return `<span class="${colorClass} px-2 py-1 rounded-full">${text}</span>`;
   },
 
   itemRow(item, index, onRemove) {
@@ -112,7 +111,7 @@ const components = {
             vistaActual === "taller"
               ? `
               <div class="col-span-2 flex bg-slate-100 p-1 rounded-2xl mb-1">
-                <button data-id-estado="${p.id}" data-estado-valor="Pendiente"
+                <button data-id="${p.id}" data-estado="Pendiente"
                   class="btn-estado flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all ${
                     !esListo
                       ? "bg-white text-amber-500 shadow-sm"
@@ -120,7 +119,7 @@ const components = {
                   }">
                   <i class="fas fa-clock mr-1"></i> Pendiente
                 </button>
-                <button data-id-estado="${p.id}" data-estado-valor="Listo"
+                <button data-id="${p.id}" data-estado="Listo"
                   class="btn-estado flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all ${
                     esListo
                       ? "bg-green-500 text-white shadow-md scale-[1.02]"
@@ -200,28 +199,21 @@ export const ui = {
       .join("");
 
     // Attach local listeners
-    document.querySelectorAll(".btn-borrar").forEach(
-      (b) =>
-        (b.onclick = () => {
-          console.log("Borrar ID:", b.dataset.id);
-          handlers.onBorrar(b.dataset.id, b.dataset.cliente);
-        })
-    );
-    document.querySelectorAll(".btn-estado").forEach((b) => {
-      b.onclick = async () => {
-        const id = b.getAttribute("data-id-estado");
-        const estado = b.getAttribute("data-estado-valor");
-        console.log("Cambio solicitado para ID:", id, "Estado:", estado);
-        await handlers.onEstado(id, estado);
-      };
-    });
-    document.querySelectorAll(".btn-entregar").forEach(
-      (b) =>
-        (b.onclick = () => {
-          console.log("Entregar ID:", b.dataset.id);
-          handlers.onEntregar(b.dataset.id);
-        })
-    );
+    document
+      .querySelectorAll(".btn-borrar")
+      .forEach(
+        (b) =>
+          (b.onclick = () => handlers.onBorrar(b.dataset.id, b.dataset.cliente))
+      );
+    document
+      .querySelectorAll(".btn-estado")
+      .forEach(
+        (b) =>
+          (b.onclick = () => handlers.onEstado(b.dataset.id, b.dataset.estado))
+      );
+    document
+      .querySelectorAll(".btn-entregar")
+      .forEach((b) => (b.onclick = () => handlers.onEntregar(b.dataset.id)));
     document
       .querySelectorAll(".btn-wa")
       .forEach(
