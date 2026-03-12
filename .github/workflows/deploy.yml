@@ -16,11 +16,11 @@ jobs:
       - name: 📂 Sync files via Rsync
         uses: Burnett01/rsync-deployments@7.0.0
         with:
-          switches: -avzr --delete
+          switches: -rvz --delete --omit-dir-times --no-perms --no-owner --no-group
           path: .
           remote_path: /home/carscx-printmanager/htdocs/printmanager.carscx.com/
           remote_host: ${{ secrets.SSH_SERVER }}
           remote_user: ${{ secrets.SSH_USER }}
           remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
           remote_port: 22
-          exclude: ".git* .github* node_modules update_schema.sql"
+          args: --exclude='.git*' --exclude='.github*' --exclude='node_modules' --exclude='update_schema.sql' --exclude='deploy_key*'
