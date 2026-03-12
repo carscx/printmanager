@@ -13,21 +13,20 @@ jobs:
       - name: 🚚 Get latest code
         uses: actions/checkout@v3
 
-      - name: 📂 Sync files via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: 📂 Sync files via SFTP (SSH)
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          # Intenta quitar la ruta absoluta larga si el usuario FTP ya está enjaulado en su htdocs
-          server-dir: ./
-          # Forzar modo pasivo y desactivar verificación estricta de TLS si es necesario
-          dangerous-clean-slate: false
+          host: ${{ secrets.SSH_SERVER }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          source: "."
+          target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
+          rm: false
+          strip_components: 0
           exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
+            .git
+            .github
+            node_modules
             update_schema.sql
             README.md
