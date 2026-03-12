@@ -20,8 +20,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          source: "./index.html,./js/**,./README.md"
+          timeout: 60s # Aumentamos el tiempo de espera
+          command_timeout: 2m # Más tiempo para comandos pesados
+          source: "index.html,js/**,README.md"
           target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
-          rm: false
           strip_components: 0
           overwrite: true
