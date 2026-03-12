@@ -174,9 +174,20 @@ const refreshData = async () => {
       actualizarTotalesNuevoPedido();
     },
     onEstado: async (id, nuevoEst) => {
-      await api.cambiarEstadoPedido(id, nuevoEst);
-      ui.showToast(`PEDIDO MARCADO COMO ${nuevoEst.toUpperCase()}`);
-      refreshData();
+      try {
+        console.log("Cambiando:", id, nuevoEst);
+        const res = await api.cambiarEstadoPedido(id, nuevoEst);
+        if (res.error) throw res.error;
+
+        ui.showToast(`PEDIDO MARCADO COMO ${nuevoEst.toUpperCase()}`);
+        console.log("Refrescando...");
+        await refreshData();
+        await updateResumen();
+        console.log("Refrescado.");
+      } catch (err) {
+        console.error("Error completo Supabase:", err);
+        ui.showToast("ERROR AL CAMBIAR ESTADO", "error");
+      }
     },
     onEntregar: (id) =>
       ui.abrirConfirm(
@@ -375,10 +386,11 @@ window.enviarPedido = async () => {
 document.addEventListener("DOMContentLoaded", init);
 
 // --- Service Worker Registration ---
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registrado', reg))
-      .catch(err => console.error('Error al registrar Service Worker', err));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => console.log("Service Worker registrado", reg))
+      .catch((err) => console.error("Error al registrar Service Worker", err));
   });
 }

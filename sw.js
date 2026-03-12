@@ -12,7 +12,7 @@ const ASSETS = [
   "/favicon.ico",
   "/apple-touch-icon.png",
   "/site.webmanifest",
-  "https://cdn.tailwindcss.com",
+  "/tailwind.js",
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
   "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
 ];
