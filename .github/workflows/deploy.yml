@@ -19,7 +19,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: / # O el path específico si tu sitio está en una subcarpeta
+          server-dir: /home/carscx-printmanager/htdocs/printmanager.carscx.com/
           exclude: |
             **/.git*
             **/.git*/**
