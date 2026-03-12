@@ -22,8 +22,9 @@ jobs:
           port: 22
           source: "."
           target: "/home/carscx-printmanager/htdocs/printmanager.carscx.com/"
-          rm: false
+          rm: true
           strip_components: 0
+          overwrite: true
           exclude: |
             .git
             .github
