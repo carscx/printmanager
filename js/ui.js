@@ -54,8 +54,8 @@ const components = {
     const fDate = p.fecha_entrega
       ? `${new Date(p.fecha_entrega + "T12:00:00").toLocaleDateString("es-AR")}`
       : "⏳";
-    const totalP = p.total || p.total_pedido || 0;
-    const senaP = p.sena || 0;
+    const totalP = Number(p.total ?? p.total_pedido ?? 0);
+    const senaP = Number(p.sena ?? 0);
     const restaP = totalP - senaP;
     const senaBadge =
       senaP >= totalP && totalP > 0
