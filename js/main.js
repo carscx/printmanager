@@ -7,6 +7,7 @@ let settings = {};
 let vistaActual = "taller";
 let itemsPedidoNuevo = [];
 let editandoPedidoId = null;
+let tipoPagoSeleccionado = "sin_pago";
 
 // --- Navegación ---
 window.navigateTo = (view) => {
@@ -27,10 +28,12 @@ window.navigateTo = (view) => {
     // Si no estamos editando, resetear todo
     if (!editandoPedidoId) {
       itemsPedidoNuevo = [];
+      tipoPagoSeleccionado = "sin_pago";
       document.getElementById("cliente").value = "";
       document.getElementById("fecha_entrega").value = "";
       document.getElementById("pedido_observaciones").value = "";
       resetFormItem();
+      window.selPago("sin_pago");
       ui.renderItemsCarrito(itemsPedidoNuevo, "removerItem");
       actualizarTotalesNuevoPedido();
     }
@@ -69,16 +72,21 @@ window.agregarItemALista = () => {
 
   if (total <= 0) return;
 
+  const doble_faz = params.doble_faz;
+  const sobrina = document.getElementById("sobrina_check").checked;
+  const aniCosto =
+    params.idAni !== "0" ? parseFloat(settings[params.idAni]) || 0 : 0;
+
   const item = {
     nombre_archivo: `Archivo ${itemsPedidoNuevo.length + 1}`,
     paginas: params.paginas,
-    tipo_tinta: params.tipo,
-    doble_faz: params.doble_faz,
-    anillado_costo:
-      params.idAni !== "0" ? parseFloat(settings[params.idAni]) || 0 : 0,
-    sobrina_trabajo: document.getElementById("sobrina_check").checked,
+    tipo_impresion: `${params.tipo === "bn" ? "B/N" : "COLOR"} ${doble_faz ? "DF" : "SF"}`,
+    anillado: aniCosto > 0 ? `$${aniCosto}` : null,
+    precio_unitario: total,
     observaciones: document.getElementById("item_notas").value.trim(),
-    subtotal_item: total
+    // Campos extra (no van a DB, solo UI/cálculos en memoria)
+    _sobrina: sobrina,
+    _anillado_costo: aniCosto
   };
 
   itemsPedidoNuevo.push(item);
@@ -93,16 +101,59 @@ window.removerItem = (index) => {
   actualizarTotalesNuevoPedido();
 };
 
+window.selPago = (tipo) => {
+  tipoPagoSeleccionado = tipo;
+  document.querySelectorAll(".pago-opt").forEach((btn) => {
+    btn.classList.remove("bg-white/10", "text-white");
+    btn.classList.add("text-slate-500");
+  });
+  const active = document.getElementById(`pago-${tipo}`);
+  active.classList.add("bg-white/10", "text-white");
+  active.classList.remove("text-slate-500");
+  document
+    .getElementById("sena-libre-container")
+    .classList.toggle("hidden", tipo !== "sena_libre");
+  actualizarTotalesNuevoPedido();
+};
+
+window.actualizarSenaLibre = () => actualizarTotalesNuevoPedido();
+
+const calcularSena = (total) => {
+  switch (tipoPagoSeleccionado) {
+    case "sena_50":
+      return Math.round(total * 0.5);
+    case "sena_libre":
+      return parseInt(document.getElementById("sena_libre_monto").value) || 0;
+    case "pago_total":
+      return total;
+    default:
+      return 0;
+  }
+};
+
 const actualizarTotalesNuevoPedido = () => {
-  const total = itemsPedidoNuevo.reduce((acc, it) => acc + it.subtotal_item, 0);
-  const sena = Math.round(total * 0.5);
+  const total = itemsPedidoNuevo.reduce(
+    (acc, it) => acc + (it.precio_unitario || it.subtotal_item || 0),
+    0
+  );
+  const sena = calcularSena(total);
+  const resta = total - sena;
+  const labels = {
+    sin_pago: "Sin pago",
+    sena_50: "Seña 50%",
+    sena_libre: "Seña libre",
+    pago_total: "Pago total"
+  };
 
   document.getElementById("t-total-nuevo").innerText =
     `$ ${total.toLocaleString("es-AR")}`;
+  document.getElementById("t-sena-label").innerText =
+    labels[tipoPagoSeleccionado] || "Seña";
   document.getElementById("t-sena-nuevo").innerText =
     `$ ${sena.toLocaleString("es-AR")}`;
+  document.getElementById("t-resta-nuevo").innerText =
+    `$ ${resta.toLocaleString("es-AR")}`;
 
-  // Habilitar/Deshabilitar botón de guardar
   const btn = document.getElementById("btnGuardarPedido");
   if (itemsPedidoNuevo.length > 0) {
     btn.disabled = false;
@@ -116,18 +167,26 @@ const actualizarTotalesNuevoPedido = () => {
 window.finalizarPedidoMultiple = async () => {
   if (itemsPedidoNuevo.length === 0) return;
 
-  const total = itemsPedidoNuevo.reduce((acc, it) => acc + it.subtotal_item, 0);
+  const total = itemsPedidoNuevo.reduce(
+    (acc, it) => acc + (it.precio_unitario || it.subtotal_item || 0),
+    0
+  );
+
+  const sena = calcularSena(total);
 
   const cabecera = {
     cliente: document.getElementById("cliente").value || "General",
     fecha_entrega: document.getElementById("fecha_entrega").value || null,
-    total_pedido: total,
-    pago_sena: Math.round(total * 0.5),
+    total: total,
+    sena: sena,
     observaciones: document.getElementById("pedido_observaciones").value.trim()
   };
 
   try {
     if (editandoPedidoId) {
+      cabecera.estado = "Pendiente";
+      cabecera.entregado = false;
+      cabecera.fecha_pago = null;
       await api.actualizarPedidoCompleto(
         editandoPedidoId,
         cabecera,
@@ -165,11 +224,22 @@ const refreshData = async () => {
     onEditar: (p) => {
       editandoPedidoId = p.id;
       itemsPedidoNuevo = [...p.pedido_items];
+      const totalP = p.total || p.total_pedido || 0;
+      const senaP = p.sena || 0;
+      if (senaP === 0) tipoPagoSeleccionado = "sin_pago";
+      else if (senaP >= totalP) tipoPagoSeleccionado = "pago_total";
+      else if (senaP === Math.round(totalP * 0.5))
+        tipoPagoSeleccionado = "sena_50";
+      else tipoPagoSeleccionado = "sena_libre";
       window.navigateTo("nuevo-pedido");
       document.getElementById("cliente").value = p.cliente;
       document.getElementById("fecha_entrega").value = p.fecha_entrega || "";
       document.getElementById("pedido_observaciones").value =
         p.observaciones || "";
+      window.selPago(tipoPagoSeleccionado);
+      if (tipoPagoSeleccionado === "sena_libre") {
+        document.getElementById("sena_libre_monto").value = senaP;
+      }
       ui.renderItemsCarrito(itemsPedidoNuevo, "removerItem");
       actualizarTotalesNuevoPedido();
     },
@@ -178,31 +248,57 @@ const refreshData = async () => {
       ui.showToast(`PEDIDO MARCADO COMO ${nuevoEst.toUpperCase()}`);
       refreshData();
     },
-    onEntregar: (id) =>
+    onEntregar: (p) =>
       ui.abrirConfirm(
         "success",
         "¿Pedido entregado?",
-        "Se cobrara y pasara al historial de hoy.",
+        "Se marcará como cobrado y pasará al historial.",
         async () => {
-          await api.entregarPedido(id);
-          ui.showToast("PEDIDO ENTREGADO");
+          const totalP = p.total || p.total_pedido || 0;
+          await api.entregarPedido(p.id, totalP);
+          ui.showToast("PEDIDO ENTREGADO Y COBRADO");
           refreshData();
           updateResumen();
+        }
+      ),
+    onCobrar: (p) =>
+      ui.abrirConfirm(
+        "success",
+        "¿Marcar como cobrado?",
+        `Se registrará el pago total de $${(p.total || p.total_pedido || 0).toLocaleString("es-AR")}.`,
+        async () => {
+          const totalP = p.total || p.total_pedido || 0;
+          await api.cobrarPedido(p.id, totalP);
+          ui.showToast("PEDIDO COBRADO");
+          refreshData();
         }
       ),
     onWA: (p) => {
       const itemsText = p.pedido_items
         .map(
           (it) =>
-            `- ${it.paginas} pág ${(it.tipo_tinta || "B/N").toUpperCase()} ${it.doble_faz ? "DF" : "SF"} ${it.anillado_costo > 0 ? "+ Anillado" : ""}`
+            `- ${it.paginas} pág ${it.tipo_impresion || "B/N"} ${it.anillado ? "+ Anillado" : ""}`
         )
         .join("\n");
 
+      const totalP = p.total || p.total_pedido || 0;
+      const senaP = p.sena || 0;
+      const restaP = totalP - senaP;
+
+      let pagoTexto = "";
+      if (senaP >= totalP && totalP > 0) {
+        pagoTexto = `\n*Total: $${totalP.toLocaleString("es-AR")}* ✅ Pagado`;
+      } else if (senaP > 0) {
+        pagoTexto = `\n*Total: $${totalP.toLocaleString("es-AR")}*\n✅ Seña: *$${senaP.toLocaleString("es-AR")}*\n💰 Resta: *$${restaP.toLocaleString("es-AR")}*`;
+      } else {
+        pagoTexto = `\n*Total a abonar: $${totalP.toLocaleString("es-AR")}*`;
+      }
+
       const msj = `Hola *${p.cliente}*,\n${
         p.estado === "Listo"
-          ? "Tu pedido está listo para retirar"
+          ? "Tu pedido está listo para retirar 🎉"
           : "Te paso el presupuesto:"
-      }\n\nDetalle:\n${itemsText}\n\n*Total: $${p.total_pedido.toLocaleString("es-AR")}*\n\nPagos:\nAlias: *${settings.pago_alias || "S/D"}*`;
+      }\n\nDetalle:\n${itemsText}\n${pagoTexto}\n\nPagos:\nAlias: *${settings.pago_alias || "S/D"}*`;
       window.open(`https://wa.me/?text=${encodeURIComponent(msj)}`, "_blank");
     }
   });
@@ -211,15 +307,21 @@ const refreshData = async () => {
 const updateResumen = async () => {
   const { data: pedidosHoy } = await api.fetchResumenHoy();
   if (pedidosHoy) {
-    // Necesitamos adaptar el cálculo del resumen porque ahora usamos 'total_pedido'
     const resumen = {
-      total: pedidosHoy.reduce((acc, p) => acc + Number(p.total_pedido), 0),
+      total: pedidosHoy.reduce(
+        (acc, p) => acc + Number(p.total || p.total_pedido || 0),
+        0
+      ),
       comisionTotal: pedidosHoy.reduce((acc, p) => {
         const comisionPedido = (p.pedido_items || []).reduce((accIt, it) => {
+          const esSobrina =
+            it._sobrina ||
+            (it.observaciones && it.observaciones.includes("[AVRU]"));
           return (
             accIt +
-            (it.sobrina_trabajo
-              ? it.subtotal_item * (parseFloat(settings.comision_sobrina) / 100)
+            (esSobrina
+              ? (it.precio_unitario || it.subtotal_item || 0) *
+                (parseFloat(settings.comision_sobrina) / 100)
               : 0)
           );
         }, 0);

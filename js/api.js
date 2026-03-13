@@ -37,19 +37,29 @@ export const api = {
       .select();
 
     if (error) console.error("DB_UPDATE_ERROR", error);
-    if (data && data.length === 0) console.warn("DB_UPDATE_EMPTY - No se encontró fila o RLS activo");
-    
+    if (data && data.length === 0)
+      console.warn("DB_UPDATE_EMPTY - No se encontró fila o RLS activo");
+
     return { data, error };
   },
 
-  async entregarPedido(id) {
+  async entregarPedido(id, total) {
     return await sb
       .from("pedidos")
       .update({
         entregado: true,
         fecha_pago: new Date().toISOString(),
-        estado: "Listo"
+        estado: "Listo",
+        sena: total
       })
+      .eq("id", id)
+      .select();
+  },
+
+  async cobrarPedido(id, total) {
+    return await sb
+      .from("pedidos")
+      .update({ sena: total })
       .eq("id", id)
       .select();
   },
@@ -58,21 +68,38 @@ export const api = {
     return await sb.from("pedidos").delete().eq("id", id);
   },
 
+  _mapItemToDB(it, pedidoId) {
+    return {
+      pedido_id: pedidoId,
+      nombre_archivo: it.nombre_archivo,
+      paginas: it.paginas || 0,
+      tipo_impresion: it.tipo_impresion || null,
+      anillado: it.anillado || null,
+      precio_unitario: it.precio_unitario || it.subtotal_item || 0,
+      observaciones: (it._sobrina ? "[AVRU] " : "") + (it.observaciones || "")
+    };
+  },
+
   async crearPedidoCompleto(pedidoCabecera, items) {
-    // Asegurar que los items tengan el formato correcto
-    const { data: pData, error: pError } = await sb.from("pedidos").insert([pedidoCabecera]).select();
+    const { data: pData, error: pError } = await sb
+      .from("pedidos")
+      .insert([pedidoCabecera])
+      .select();
     if (pError) throw pError;
-    const itemsRel = items.map(it => ({ ...it, pedido_id: pData[0].id }));
+    const itemsRel = items.map((it) => this._mapItemToDB(it, pData[0].id));
     const { error: iError } = await sb.from("pedido_items").insert(itemsRel);
     if (iError) throw iError;
     return { data: pData };
   },
 
   async actualizarPedidoCompleto(pedidoId, cabecera, items) {
-    const { error: cErr } = await sb.from("pedidos").update(cabecera).eq("id", pedidoId);
+    const { error: cErr } = await sb
+      .from("pedidos")
+      .update(cabecera)
+      .eq("id", pedidoId);
     if (cErr) throw cErr;
     await sb.from("pedido_items").delete().eq("pedido_id", pedidoId);
-    const itemsRel = items.map(it => ({ ...it, pedido_id: pedidoId }));
+    const itemsRel = items.map((it) => this._mapItemToDB(it, pedidoId));
     const { error: iErr } = await sb.from("pedido_items").insert(itemsRel);
     if (iErr) throw iErr;
     return { success: true };

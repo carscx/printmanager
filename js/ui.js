@@ -10,13 +10,11 @@ const components = {
       <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 group">
         <div class="flex-1">
           <p class="text-[10px] font-black text-slate-800 uppercase leading-none mb-1 text-ellipsis overflow-hidden">
-            ${item.paginas} PAG | ${item.tipo_tinta === "bn" ? "B&N" : "COLOR"} ${
-              item.doble_faz ? "(DF)" : "(SF)"
-            }
+            ${item.paginas} PAG | ${item.tipo_impresion || "B/N"}
           </p>
           <div class="flex gap-2 mb-1">
             ${
-              item.anillado_costo > 0
+              item.anillado
                 ? this.badge(
                     "ANILLADO",
                     "bg-amber-100 text-amber-700 text-[8px]"
@@ -24,7 +22,8 @@ const components = {
                 : ""
             }
             ${
-              item.sobrina_trabajo
+              item._sobrina ||
+              (item.observaciones && item.observaciones.includes("[AVRU]"))
                 ? this.badge("AVRU", "bg-purple-100 text-purple-700 text-[8px]")
                 : ""
             }
@@ -36,9 +35,11 @@ const components = {
           }
         </div>
         <div class="text-right flex items-center gap-3">
-          <p class="font-black text-slate-900 text-sm">$${item.subtotal_item.toLocaleString(
-            "es-AR"
-          )}</p>
+          <p class="font-black text-slate-900 text-sm">$${(
+            item.precio_unitario ||
+            item.subtotal_item ||
+            0
+          ).toLocaleString("es-AR")}</p>
           <button onclick="${onRemove}(${index})" class="text-slate-300 hover:text-red-500 transition-colors p-1">
             <i class="fas fa-times-circle"></i>
           </button>
@@ -53,6 +54,25 @@ const components = {
     const fDate = p.fecha_entrega
       ? `${new Date(p.fecha_entrega + "T12:00:00").toLocaleDateString("es-AR")}`
       : "⏳";
+    const totalP = p.total || p.total_pedido || 0;
+    const senaP = p.sena || 0;
+    const restaP = totalP - senaP;
+    const senaBadge =
+      senaP >= totalP && totalP > 0
+        ? this.badge("PAGADO", "bg-green-100 text-green-600 text-[8px]")
+        : senaP > 0
+          ? this.badge(
+              `SEÑA $${senaP.toLocaleString("es-AR")}`,
+              "bg-blue-100 text-blue-600 text-[8px]"
+            )
+          : this.badge("SIN SEÑA", "bg-red-50 text-red-500 text-[8px]");
+    const restaInfo =
+      senaP > 0 && senaP < totalP
+        ? `<div class="flex justify-between items-center bg-blue-50 p-3 rounded-xl mb-3 border border-blue-100">
+          <span class="text-[9px] font-black text-blue-600 uppercase">Seña: $${senaP.toLocaleString("es-AR")}</span>
+          <span class="text-[9px] font-black text-amber-600 uppercase">Resta: $${restaP.toLocaleString("es-AR")}</span>
+        </div>`
+        : "";
 
     return `
       <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 border-l-8 ${
@@ -87,9 +107,8 @@ const components = {
                 p.id
               }" class="btn-borrar text-slate-200 hover:text-red-500 transition-colors mb-2 p-1"><i class="fas fa-trash-alt text-sm"></i></button>
             </div>
-            <p class="text-2xl font-black text-slate-900 leading-none">$${p.total_pedido.toLocaleString(
-              "es-AR"
-            )}</p>
+            <p class="text-2xl font-black text-slate-900 leading-none">$${totalP.toLocaleString("es-AR")}</p>
+            ${senaBadge}
           </div>
         </div>
 
@@ -105,6 +124,8 @@ const components = {
             )
             .join("")}
         </div>
+
+        ${restaInfo}
 
         <div class="grid grid-cols-2 gap-3">
           ${
@@ -130,9 +151,19 @@ const components = {
               </div>
               <button data-id="${
                 p.id
-              }" class="btn-entregar bg-blue-600 text-white p-3 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+              }" data-total="${totalP}" class="btn-entregar bg-blue-600 text-white p-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
                 <i class="fas fa-hand-holding-usd"></i> Entregar
               </button>
+              ${
+                senaP < totalP
+                  ? `
+              <button data-pedido='${JSON.stringify(
+                p
+              )}' class="btn-cobrar bg-green-600 text-white p-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
+                <i class="fas fa-cash-register"></i> Cobrar
+              </button>`
+                  : ""
+              }
               <button data-pedido='${JSON.stringify(
                 p
               )}' class="btn-wa bg-slate-900 text-white p-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
@@ -211,9 +242,20 @@ export const ui = {
         (b) =>
           (b.onclick = () => handlers.onEstado(b.dataset.id, b.dataset.estado))
       );
+    document.querySelectorAll(".btn-entregar").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const id = b.dataset.id;
+          const pedido = data.find((p) => p.id === id);
+          if (pedido) handlers.onEntregar(pedido);
+        })
+    );
     document
-      .querySelectorAll(".btn-entregar")
-      .forEach((b) => (b.onclick = () => handlers.onEntregar(b.dataset.id)));
+      .querySelectorAll(".btn-cobrar")
+      .forEach(
+        (b) =>
+          (b.onclick = () => handlers.onCobrar(JSON.parse(b.dataset.pedido)))
+      );
     document
       .querySelectorAll(".btn-wa")
       .forEach(

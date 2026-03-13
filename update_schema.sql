@@ -18,6 +18,18 @@ ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS observaciones text;
 ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS total_pedido numeric DEFAULT 0;
 ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS fecha_pago timestamp with time zone;
 
+-- 2b. Relajar constraints de columnas legacy (ahora viven en pedido_items)
+ALTER TABLE public.pedidos ALTER COLUMN paginas SET DEFAULT 0;
+ALTER TABLE public.pedidos ALTER COLUMN paginas DROP NOT NULL;
+ALTER TABLE public.pedidos ALTER COLUMN anillado_costo SET DEFAULT 0;
+ALTER TABLE public.pedidos ALTER COLUMN anillado_costo DROP NOT NULL;
+ALTER TABLE public.pedidos ALTER COLUMN tipo_tinta SET DEFAULT 'bn';
+ALTER TABLE public.pedidos ALTER COLUMN tipo_tinta DROP NOT NULL;
+ALTER TABLE public.pedidos ALTER COLUMN doble_faz SET DEFAULT false;
+ALTER TABLE public.pedidos ALTER COLUMN doble_faz DROP NOT NULL;
+ALTER TABLE public.pedidos ALTER COLUMN sobrina_trabajo SET DEFAULT false;
+ALTER TABLE public.pedidos ALTER COLUMN sobrina_trabajo DROP NOT NULL;
+
 -- 3. Habilitar RLS (Opcional, según tu config de Supabase)
 ALTER TABLE public.pedido_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir todo a anon" ON public.pedido_items FOR ALL USING (true);

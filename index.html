@@ -223,13 +223,33 @@
             </div>
 
             <div class="p-6 bg-slate-900 rounded-3xl text-white shadow-xl mt-auto">
-              <div class="flex justify-between items-center mb-2 leading-none">
+              <div class="flex justify-between items-center mb-4 leading-none">
                 <span class="text-slate-500 font-black text-[10px] uppercase tracking-widest">Total Pedido</span>
                 <span class="text-3xl font-black text-green-400" id="t-total-nuevo">$ 0</span>
               </div>
+              <div class="grid grid-cols-4 gap-1 bg-slate-800 p-1 rounded-xl mb-3">
+                <button type="button" onclick="selPago('sin_pago')" id="pago-sin_pago"
+                  class="pago-opt py-2 rounded-lg text-[8px] font-black uppercase tracking-wider bg-white/10 text-white">Sin
+                  pago</button>
+                <button type="button" onclick="selPago('sena_50')" id="pago-sena_50"
+                  class="pago-opt py-2 rounded-lg text-[8px] font-black uppercase tracking-wider text-slate-500">50%</button>
+                <button type="button" onclick="selPago('sena_libre')" id="pago-sena_libre"
+                  class="pago-opt py-2 rounded-lg text-[8px] font-black uppercase tracking-wider text-slate-500">Libre</button>
+                <button type="button" onclick="selPago('pago_total')" id="pago-pago_total"
+                  class="pago-opt py-2 rounded-lg text-[8px] font-black uppercase tracking-wider text-slate-500">Total</button>
+              </div>
+              <div id="sena-libre-container" class="hidden mb-3">
+                <input type="number" id="sena_libre_monto" placeholder="Monto de seña" oninput="actualizarSenaLibre()"
+                  class="w-full p-3 bg-slate-800 rounded-xl text-white font-black text-center border border-slate-700 outline-none focus:border-blue-500">
+              </div>
               <div class="flex justify-between items-center pt-3 border-t border-white/10 leading-none">
-                <span class="text-slate-500 font-bold text-xs uppercase tracking-tighter">Seña (50%)</span>
+                <span class="text-slate-500 font-bold text-xs uppercase tracking-tighter" id="t-sena-label">Sin
+                  pago</span>
                 <span class="font-black text-blue-400" id="t-sena-nuevo">$ 0</span>
+              </div>
+              <div class="flex justify-between items-center pt-2 leading-none">
+                <span class="text-slate-500 font-bold text-xs uppercase tracking-tighter">Resta</span>
+                <span class="font-black text-amber-400" id="t-resta-nuevo">$ 0</span>
               </div>
             </div>
 
