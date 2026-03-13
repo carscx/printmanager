@@ -1,7 +1,7 @@
-import { ADMIN_PASS } from "./supabase.js";
-import { api } from "./api.js";
-import { ui } from "./ui.js";
-import { calculator } from "./services/calculator.js";
+import { ADMIN_PASS } from "./supabase.js?v=2";
+import { api } from "./api.js?v=2";
+import { ui } from "./ui.js?v=2";
+import { calculator } from "./services/calculator.js?v=2";
 
 let settings = {};
 let vistaActual = "taller";

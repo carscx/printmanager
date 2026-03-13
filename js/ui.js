@@ -1,4 +1,4 @@
-import { descConfig } from "./supabase.js";
+import { descConfig } from "./supabase.js?v=2";
 
 const components = {
   badge(text, colorClass) {

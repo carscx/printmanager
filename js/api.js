@@ -1,4 +1,4 @@
-import { sb } from "./supabase.js";
+import { sb } from "./supabase.js?v=2";
 
 export const api = {
   async fetchConfig() {
