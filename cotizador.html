@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador Pro - Carlos Santos</title>
+  <style>
+    :root {
+      --primary: #25d366;
+      --dark: #2c3e50;
+      --bg: #f4f7f6;
+      --accent: #e67e22;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 450px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 10px;
+      font-size: 1.4em;
+    }
+
+    .group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .checkbox-group input {
+      width: auto;
+    }
+
+    .total-box {
+      background: #e9f7ef;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      border: 1px solid #27ae60;
+    }
+
+    .total-box span {
+      font-size: 1.6em;
+      font-weight: bold;
+      color: #27ae60;
+    }
+
+    .sena-box {
+      background: #fff4e5;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      text-align: center;
+      border: 1px solid var(--accent);
+    }
+
+    .sena-box b {
+      color: var(--accent);
+      font-size: 1.2em;
+    }
+
+    .bank-info {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 15px;
+      font-size: 0.85em;
+      border-left: 4px solid #3498db;
+    }
+
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #128c7e;
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Presupuestador de Impresiones</h2>
+
+    <div class="group">
+      <label>Nombre del Cliente:</label>
+      <input type="text" id="cliente" placeholder="Ej: Juan Pérez" oninput="calcular()">
+    </div>
+
+    <div class="group">
+      <label>Cantidad de Hojas:</label>
+      <input type="number" id="hojas" value="1" min="1" oninput="calcular()">
+    </div>
+
+    <div class="group">
+      <label>Tipo de Impresión:</label>
+      <select id="tipo" onchange="calcular()">
+        <option value="40">B&N - Simple Faz ($40)</option>
+        <option value="65">B&N - Doble Faz ($65)</option>
+        <option value="80">Color - Simple Faz ($80)</option>
+        <option value="125">Color - Doble Faz ($125)</option>
+      </select>
+    </div>
+
+    <div class="group checkbox-group">
+      <input type="checkbox" id="anillado" onchange="calcular()">
+      <label for="anillado">¿Incluir Anillado?</label>
+    </div>
+
+    <div class="total-box">
+      <p>Total Presupuestado:</p>
+      <span>$ <span id="total">40</span></span>
+    </div>
+
+    <div class="sena-box">
+      Seña del 50% para confirmar: <br>
+      <b>$ <span id="sena">20</span></b>
+    </div>
+
+    <div class="bank-info">
+      <b>Datos de Pago:</b><br>
+      Titular: Carlos Santos<br>
+      Alias: <code style="background:#eee; padding:2px 4px;">impresionyanillados</code>
+    </div>
+
+    <button onclick="enviarWhatsApp()">Compartir por WhatsApp</button>
+  </div>
+
+  <script>
+    const precios = {
+      anillado: [
+        { limite: 80, precio: 1000, nombre: "Chico (hasta 80h)" },
+        { limite: 200, precio: 1500, nombre: "Mediano (80-200h)" },
+        { limite: Infinity, precio: 2000, nombre: "Grande (+200h)" }
+      ]
+    };
+
+    function calcular() {
+      const hojas = parseInt(document.getElementById('hojas').value) || 0;
+      const precioUnitario = parseInt(document.getElementById('tipo').value);
+      const incluyeAnillado = document.getElementById('anillado').checked;
+
+      let subtotalImpresion = hojas * precioUnitario;
+      let costoAnillado = 0;
+      let infoAnillado = "";
+
+      if (incluyeAnillado && hojas > 0) {
+        const tipo = precios.anillado.find(a => hojas <= a.limite);
+        costoAnillado = tipo.precio;
+        infoAnillado = `Anillado ${tipo.nombre}`;
+      }
+
+      const total = subtotalImpresion + costoAnillado;
+      const sena = total / 2;
+
+      document.getElementById('total').innerText = total.toLocaleString('es-AR');
+      document.getElementById('sena').innerText = sena.toLocaleString('es-AR');
+
+      return { total, sena, hojas, precioUnitario, costoAnillado, infoAnillado };
+    }
+
+    function enviarWhatsApp() {
+      const res = calcular();
+      const cliente = document.getElementById('cliente').value.trim() || "Cliente";
+      const tipoTexto = document.getElementById('tipo').options[document.getElementById('tipo').selectedIndex].text;
+
+      let mensaje = `*Hola ${cliente}, este es el presupuesto solicitado:*%0A%0A`;
+      mensaje += `*PRESUPUESTO DE IMPRESIÓN*%0A`;
+      mensaje += `--------------------------%0A`;
+      mensaje += `*Cantidad:* ${res.hojas} hojas%0A`;
+      mensaje += `*Servicio:* ${tipoTexto}%0A`;
+      if (res.costoAnillado > 0) mensaje += `*Incluye:* ${res.infoAnillado}%0A`;
+      mensaje += `--------------------------%0A`;
+      mensaje += `*TOTAL: $${res.total.toLocaleString('es-AR')}*%0A`;
+      mensaje += `*SEÑA (50%): $${res.sena.toLocaleString('es-AR')}*%0A%0A`;
+      mensaje += `*DATOS DE TRANSFERENCIA:*%0A`;
+      mensaje += `Titular: Carlos Santos%0A`;
+      mensaje += `Alias: impresionyanillados%0A%0A`;
+      mensaje += `_Por favor, enviar comprobante para iniciar el trabajo._`;
+
+      // Al no poner número después del 'wa.me/', WhatsApp abre el selector de contactos
+      window.open(`https://wa.me/?text=${mensaje}`, '_blank');
+    }
+  </script>
+
+</body>
+</html>

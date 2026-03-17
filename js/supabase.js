@@ -1,5 +1,5 @@
 // Entornos: 'DEV' o 'PROD'
-const ENV = "PROD";
+const ENV = "DEV";
 
 const CONFIG = {
   DEV: {
