@@ -11,6 +11,7 @@ import { api, type HistorialFiltros } from "../services/api";
 import { normalizarEstadoPedido } from "../utils/pedidoEstado";
 import { pedidosToCSV } from "../utils/pedidosCsv";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
+import { useAuth } from "../hooks/useAuth";
 
 type DatePreset = "todo" | "hoy" | "semana" | "mes" | "custom";
 type TipoTrabajo = "bn" | "color" | "anillado" | "todos";
@@ -35,6 +36,7 @@ function toISO(d: Date) {
 export function PedidosPage() {
   const navigate = useNavigate();
   const { borrar } = usePedidos();
+  const { isAdmin } = useAuth();
 
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [total, setTotal] = useState(0);
@@ -46,7 +48,10 @@ export function PedidosPage() {
   const [estado, setEstado] = useState<string>("todos");
   const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo>("todos");
   const [cobranza, setCobranza] = useState<CobranzaFiltro>("todos");
-  const [clienteQuery, setClienteQuery] = useState("");
+  /** Texto en el input (no dispara carga hasta pulsar Buscar). */
+  const [busquedaInput, setBusquedaInput] = useState("");
+  /** Valor enviado al listado / API. */
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [openRango, setOpenRango] = useState(false);
   const [openEstado, setOpenEstado] = useState(false);
@@ -138,7 +143,9 @@ export function PedidosPage() {
       fromDate: dateRange.from ? toISO(dateRange.from) : null,
       toDate: dateRange.to ? toISO(dateRange.to) : null,
       estado: estado === "todos" ? null : estado,
-      clienteQuery: clienteQuery.trim() ? clienteQuery.trim() : null,
+      busquedaClientePedido: busquedaAplicada.trim()
+        ? busquedaAplicada.trim()
+        : null,
       searchQuery: searchQuery.trim() ? searchQuery.trim() : null,
       tipoTrabajo: tipoTrabajo === "todos" ? null : tipoTrabajo,
       cobranza: cobranza === "todos" ? null : cobranza
@@ -147,11 +154,27 @@ export function PedidosPage() {
     dateRange.from,
     dateRange.to,
     estado,
-    clienteQuery,
+    busquedaAplicada,
     searchQuery,
     tipoTrabajo,
     cobranza
   ]);
+
+  const aplicarBusquedaClientePedido = useCallback(() => {
+    setBusquedaAplicada(busquedaInput.trim());
+  }, [busquedaInput]);
+
+  const limpiarFiltros = useCallback(() => {
+    setDatePreset("todo");
+    setFromCustom("");
+    setToCustom("");
+    setEstado("todos");
+    setTipoTrabajo("todos");
+    setCobranza("todos");
+    setBusquedaInput("");
+    setBusquedaAplicada("");
+    setSearchQuery("");
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -182,7 +205,7 @@ export function PedidosPage() {
     estado,
     tipoTrabajo,
     cobranza,
-    clienteQuery,
+    busquedaAplicada,
     searchQuery
   ]);
 
@@ -338,118 +361,234 @@ export function PedidosPage() {
             {total} pedidos · página {page + 1}/{totalPages}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 justify-end">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            disabled={pedidos.length === 0 || exportingAll}
-            className="px-4 py-3 rounded-sm bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-          >
-            <i className="fas fa-file-csv" />
-            CSV esta página
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleExportTodos()}
-            disabled={total === 0 || exportingAll || loading}
-            className="px-4 py-3 rounded-sm bg-emerald-700 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-          >
-            {exportingAll ? (
-              <>
-                <i className="fas fa-spinner fa-spin" />
-                Exportando…
-              </>
-            ) : (
-              <>
-                <i className="fas fa-download" />
-                CSV todos ({total})
-              </>
-            )}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={pedidos.length === 0 || exportingAll}
+              className="px-4 py-3 rounded-sm bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <i className="fas fa-file-csv" />
+              CSV esta página
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExportTodos()}
+              disabled={total === 0 || exportingAll || loading}
+              className="px-4 py-3 rounded-sm bg-emerald-700 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {exportingAll ? (
+                <>
+                  <i className="fas fa-spinner fa-spin" />
+                  Exportando…
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-download" />
+                  CSV todos ({total})
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="bg-white p-4 rounded-sm border border-slate-100 shadow-sm space-y-3">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <ActionSheetTrigger
-            label="Período"
-            displayValue={
-              presetOpts.find((o) => o.value === datePreset)?.label ?? ""
-            }
-            onClick={() => setOpenRango(true)}
-          />
-          <ActionSheetTrigger
-            label="Estado"
-            displayValue={
-              estadoOpts.find((o) => o.value === estado)?.label ?? ""
-            }
-            onClick={() => setOpenEstado(true)}
-          />
-          <ActionSheetTrigger
-            label="Cobranza"
-            displayValue={
-              cobranzaOpts.find((o) => o.value === cobranza)?.label ?? ""
-            }
-            onClick={() => setOpenCobranza(true)}
-          />
-          <ActionSheetTrigger
-            label="Tipo trabajo"
-            displayValue={
-              tipoOpts.find((o) => o.value === tipoTrabajo)?.label ?? ""
-            }
-            onClick={() => setOpenTipo(true)}
-          />
-
-          <div className="space-y-1 col-span-2 lg:col-span-1">
+        <div className="flex flex-row flex-nowrap items-end gap-2 sm:gap-3 min-w-0">
+          <div className="space-y-1 flex-1 min-w-0">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-              Cliente
+              Buscar
             </label>
             <input
-              value={clienteQuery}
-              onChange={(e) => setClienteQuery(e.target.value)}
-              placeholder="Nombre…"
+              value={busquedaInput}
+              onChange={(e) => setBusquedaInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  aplicarBusquedaClientePedido();
+                }
+              }}
+              placeholder="Nombre o # de pedido…"
+              className="w-full min-w-0 p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={aplicarBusquedaClientePedido}
+            title="Buscar"
+            aria-label="Buscar"
+            className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-sm bg-slate-900 text-white hover:bg-slate-800 active:scale-95 transition-colors shadow-sm"
+          >
+            <i className="fas fa-search text-base sm:text-lg" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            title="Limpiar filtros"
+            aria-label="Limpiar filtros"
+            className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-sm border-2 border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 active:scale-95 transition-colors"
+          >
+            <i className="fas fa-eraser text-base sm:text-lg" aria-hidden />
+          </button>
+        </div>
+
+        <div className="lg:hidden rounded-sm border border-slate-200 bg-slate-50/40 overflow-hidden">
+          <details className="group">
+            <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 select-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2">
+                <i className="fas fa-sliders-h text-slate-400" aria-hidden />
+                Más filtros
+              </span>
+              <i
+                className="fas fa-chevron-down text-slate-400 transition-transform group-open:rotate-180"
+                aria-hidden
+              />
+            </summary>
+            <div className="px-4 pb-4 pt-0 space-y-3 border-t border-slate-200">
+              <div className="grid grid-cols-2 gap-3 pt-3">
+                <ActionSheetTrigger
+                  label="Período"
+                  displayValue={
+                    presetOpts.find((o) => o.value === datePreset)?.label ?? ""
+                  }
+                  onClick={() => setOpenRango(true)}
+                />
+                <ActionSheetTrigger
+                  label="Estado"
+                  displayValue={
+                    estadoOpts.find((o) => o.value === estado)?.label ?? ""
+                  }
+                  onClick={() => setOpenEstado(true)}
+                />
+                <ActionSheetTrigger
+                  label="Cobranza"
+                  displayValue={
+                    cobranzaOpts.find((o) => o.value === cobranza)?.label ?? ""
+                  }
+                  onClick={() => setOpenCobranza(true)}
+                />
+                <ActionSheetTrigger
+                  label="Tipo trabajo"
+                  displayValue={
+                    tipoOpts.find((o) => o.value === tipoTrabajo)?.label ?? ""
+                  }
+                  onClick={() => setOpenTipo(true)}
+                />
+              </div>
+
+              {datePreset === "custom" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                      Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={fromCustom}
+                      onChange={(e) => setFromCustom(e.target.value)}
+                      className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                      Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={toCustom}
+                      onChange={(e) => setToCustom(e.target.value)}
+                      className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                  Búsqueda (observaciones, archivo)
+                </label>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ej: urgente, archivo.pdf…"
+                  className="w-full p-3 rounded-sm bg-white border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div className="hidden lg:block space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <ActionSheetTrigger
+              label="Período"
+              displayValue={
+                presetOpts.find((o) => o.value === datePreset)?.label ?? ""
+              }
+              onClick={() => setOpenRango(true)}
+            />
+            <ActionSheetTrigger
+              label="Estado"
+              displayValue={
+                estadoOpts.find((o) => o.value === estado)?.label ?? ""
+              }
+              onClick={() => setOpenEstado(true)}
+            />
+            <ActionSheetTrigger
+              label="Cobranza"
+              displayValue={
+                cobranzaOpts.find((o) => o.value === cobranza)?.label ?? ""
+              }
+              onClick={() => setOpenCobranza(true)}
+            />
+            <ActionSheetTrigger
+              label="Tipo trabajo"
+              displayValue={
+                tipoOpts.find((o) => o.value === tipoTrabajo)?.label ?? ""
+              }
+              onClick={() => setOpenTipo(true)}
+            />
+          </div>
+
+          {datePreset === "custom" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={fromCustom}
+                  onChange={(e) => setFromCustom(e.target.value)}
+                  className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={toCustom}
+                  onChange={(e) => setToCustom(e.target.value)}
+                  className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+              Búsqueda (observaciones, archivo)
+            </label>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ej: urgente, archivo.pdf…"
               className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>
-        </div>
-
-        {datePreset === "custom" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={fromCustom}
-                onChange={(e) => setFromCustom(e.target.value)}
-                className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={toCustom}
-                onChange={(e) => setToCustom(e.target.value)}
-                className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs"
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-            Búsqueda (cliente, observaciones, archivo)
-          </label>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Ej: Juan, urgente, archivo.pdf…"
-            className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
-          />
         </div>
       </div>
 

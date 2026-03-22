@@ -125,13 +125,13 @@ INSERT INTO public.config_costos (key, value, descripcion) VALUES
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, descripcion = EXCLUDED.descripcion;
 
 INSERT INTO public.plantillas_whatsapp (estado_destino, nombre, cuerpo, incluir_datos_pago, activo, orden) VALUES
-  ('presupuesto', 'Presupuesto', E'Hola {{cliente}}, te paso el presupuesto:\n\n{{detalle}}\n\n*Total: {{total}}*\n\nPagos:\nAlias: _{{alias_pago}}_', true, true, 1),
-  ('pendiente', 'Pedido confirmado', E'Hola {{cliente}}, confirmamos tu pedido:\n{{detalle}}\nTotal: {{total}}', true, true, 1),
-  ('pendiente', 'Seña recibida', E'Hola {{cliente}}, recibimos tu seña de _{{sena}}_. Resta: _{{resta}}_.', true, true, 2),
-  ('listo', 'Listo para retirar', E'Hola {{cliente}}, tu pedido ya está listo para retirar 🎉\n\n{{detalle}}\n\n*Total: {{total}}*\n\nPodés pasar cuando quieras.', false, true, 1),
-  ('pagado', 'Pago total', E'Hola {{cliente}}, registramos tu pago de _{{total}}_. Te avisamos cuando esté listo.', false, true, 3),
-  ('entregado', 'Pedido entregado', E'Hola {{cliente}}, gracias por retirar tu pedido. ¡Que lo disfrutes!', false, true, 4),
-  ('cancelado', 'Cancelado', E'Hola {{cliente}}, el pedido fue cancelado.', true, true, 5);
+  ('presupuesto', 'Presupuesto', E'Hola {{cliente}} 👋\n\n📋 Te pasamos el presupuesto:\n\n{{detalle}}\n\n💵 *Total: {{total}}*\n{{linea_sena}}\n\n📅 *Entrega:* {{fecha_entrega}}', true, true, 1),
+  ('pendiente', 'Pedido confirmado', E'Hola {{cliente}} ✨\n\n🖨️ Confirmamos tu pedido.\n\n{{detalle}}\n\n💵 *Total del pedido:* {{total}}\n{{linea_sena}}', true, true, 1),
+  ('pendiente', 'Seña recibida', E'Hola {{cliente}} 🙌\n\n💰 Registramos tu *seña* de _{{sena}}_.\n\n📌 *Resta a pagar:* _{{resta}}_\n\n{{detalle}}', true, true, 2),
+  ('listo', 'Listo para retirar', E'Hola {{cliente}} 🎉\n\n✅ Tu pedido está *listo para retirar*.\n\n{{detalle}}\n\n💳 *Saldo pendiente al retirar:* {{resta}}\n\nPodés pasar cuando quieras 👍', true, true, 1),
+  ('pagado', 'Pago total', E'Hola {{cliente}} ✅\n\nRegistramos tu pago total de *{{total}}*. Te avisamos cuando esté listo para retirar 🔔', false, true, 3),
+  ('entregado', 'Pedido entregado', E'Hola {{cliente}}, gracias por retirar tu pedido. ¡Que lo disfrutes! 😊', false, true, 4),
+  ('cancelado', 'Cancelado', E'Hola {{cliente}} 🙏\n\nLamentablemente el pedido fue *cancelado*. Si querés retomarlo, escribinos.', false, true, 5);
 
 INSERT INTO public.pedidos (id, cliente, estado, total, sena, fecha_entrega, observaciones, entregado, fecha_pago, created_at, stock_descontado, tipo_pago, descuento_global_monto)
 VALUES

@@ -30,7 +30,7 @@ export const whatsappApi = {
       .select("*")
       .eq("estado_destino", estado)
       .eq("activo", true)
-      .order("orden", { ascending: true });
+      .order("nombre", { ascending: true });
 
     if (error) throw error;
     return (data ?? []) as PlantillaWhatsapp[];
@@ -42,7 +42,7 @@ export const whatsappApi = {
       .from("plantillas_whatsapp")
       .select("*")
       .order("estado_destino")
-      .order("orden", { ascending: true });
+      .order("nombre", { ascending: true });
 
     if (error) throw error;
     return (data ?? []) as PlantillaWhatsapp[];
@@ -60,7 +60,8 @@ export const whatsappApi = {
         cuerpo: input.cuerpo,
         incluir_datos_pago: input.incluir_datos_pago,
         activo: input.activo,
-        orden: input.orden,
+        orden: input.orden ?? 0,
+        match_criterio: input.match_criterio ?? "any",
         updated_by: updatedBy
       })
       .select()

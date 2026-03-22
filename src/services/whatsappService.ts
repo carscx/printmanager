@@ -1,5 +1,8 @@
 import type { Pedido, PedidoItem } from "../types/pedido";
-import type { PlantillaWhatsapp } from "../types/whatsapp";
+import type {
+  MatchCriterioPlantilla,
+  PlantillaWhatsapp
+} from "../types/whatsapp";
 import type { ConfigCosto } from "../types/precio";
 import { formatCurrency } from "../utils/formatters";
 
@@ -62,16 +65,6 @@ function valueFromConfig(datosPago: ConfigCosto[], key: string): string {
   return datosPago.find((c) => c.key === key)?.value ?? "";
 }
 
-/** El cuerpo ya incluye variables de pago; no duplicar bloque automático. */
-function cuerpoUsaPlaceholdersPago(cuerpo: string): boolean {
-  return (
-    /\{\{\s*alias_pago\s*\}\}/.test(cuerpo) ||
-    /\{\{\s*cbu\s*\}\}/.test(cuerpo) ||
-    /\{\{\s*titular_pago\s*\}\}/.test(cuerpo) ||
-    /\{\{\s*banco\s*\}\}/.test(cuerpo)
-  );
-}
-
 function buildBloqueDatosPago(datosPago: ConfigCosto[]): string {
   const alias = valueFromConfig(datosPago, "pago_alias").trim();
   const cbu = valueFromConfig(datosPago, "pago_cbu").trim();
@@ -86,12 +79,80 @@ function buildBloqueDatosPago(datosPago: ConfigCosto[]): string {
   return `*Datos de pago*\n${lines.join("\n")}`;
 }
 
+/** Texto al final del mensaje cuando la plantilla pide datos de pago pero no hay nada cargado en Tarifas. */
+const BLOQUE_PAGO_VACIO =
+  "*Datos de pago*\n_(Configurá alias, CBU y titular en Tarifas → Pagos / resumen.)_";
+
+/** Tolerancia en moneda local para considerar “pagó el total”. */
+const EPS_PESOS = 0.5;
+
+function leerMatchCriterio(p: PlantillaWhatsapp): MatchCriterioPlantilla {
+  const m = (p as PlantillaWhatsapp & { match_criterio?: string }).match_criterio;
+  if (
+    m === "any" ||
+    m === "pago_total" ||
+    m === "con_sena" ||
+    m === "sin_sena"
+  ) {
+    return m;
+  }
+  return "any";
+}
+
+/**
+ * Criterio de pago del pedido (no depende del estado; se usa junto a `match_criterio` de la plantilla).
+ */
+export function criterioPagoDesdePedido(
+  pedido: Pedido
+): MatchCriterioPlantilla {
+  const totalP = Number(pedido.total ?? pedido.total_pedido ?? 0) || 0;
+  const senaP = Number(pedido.sena ?? 0) || 0;
+  if (totalP <= EPS_PESOS) {
+    if (senaP > EPS_PESOS) return "con_sena";
+    return "sin_sena";
+  }
+  if (senaP >= totalP - EPS_PESOS) return "pago_total";
+  if (senaP > EPS_PESOS) return "con_sena";
+  return "sin_sena";
+}
+
+/** Cliente pagó el total (seña cubre el importe del pedido). */
+export function esPagoTotalAnticipado(pedido: Pedido): boolean {
+  return criterioPagoDesdePedido(pedido) === "pago_total";
+}
+
+/**
+ * Elige plantilla por `estado_destino` (ya filtrado) + `match_criterio` vs situación de pago del pedido.
+ * Si no hay coincidencia exacta, usa la plantilla con criterio `any`; si no existe, la primera.
+ */
+export function selectPlantillaParaPedido(
+  pedido: Pedido,
+  plantillas: PlantillaWhatsapp[]
+): PlantillaWhatsapp | null {
+  if (!plantillas.length) return null;
+  const necesario = criterioPagoDesdePedido(pedido);
+
+  const exacta = plantillas.find((p) => leerMatchCriterio(p) === necesario);
+  if (exacta) return exacta;
+
+  const respaldo = plantillas.find((p) => leerMatchCriterio(p) === "any");
+  if (respaldo) return respaldo;
+
+  return plantillas[0];
+}
+
 export function renderWhatsappMensaje(ctx: RenderContext): string {
   const { pedido, items, plantilla, datosPago } = ctx;
 
-  const totalP = pedido.total || pedido.total_pedido || 0;
-  const senaP = pedido.sena || 0;
-  const restaP = totalP - senaP;
+  const totalP = Number(pedido.total ?? pedido.total_pedido ?? 0) || 0;
+  const senaP = Number(pedido.sena ?? 0) || 0;
+  const restaP = Math.max(0, totalP - senaP);
+  const pagoTotal = esPagoTotalAnticipado(pedido);
+
+  const lineaSena =
+    pagoTotal || senaP <= EPS_PESOS
+      ? ""
+      : `💰 Seña: ${formatCurrency(senaP)} · Resto a pagar: ${formatCurrency(restaP)}`;
 
   const replacements: Record<string, string> = {
     "{{cliente}}": pedido.cliente,
@@ -99,12 +160,13 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
     "{{total}}": formatCurrency(totalP),
     "{{sena}}": formatCurrency(senaP),
     "{{resta}}": formatCurrency(restaP),
+    "{{linea_sena}}": lineaSena,
     "{{estado}}": pedido.estado,
     "{{fecha_entrega}}": pedido.fecha_entrega ?? "",
-    "{{alias_pago}}": valueFromConfig(datosPago, "pago_alias"),
-    "{{cbu}}": valueFromConfig(datosPago, "pago_cbu"),
-    "{{titular_pago}}": valueFromConfig(datosPago, "pago_titular"),
-    "{{banco}}": valueFromConfig(datosPago, "pago_banco"),
+    "{{alias_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_alias"),
+    "{{cbu}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_cbu"),
+    "{{titular_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_titular"),
+    "{{banco}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_banco"),
     "{{observaciones}}": pedido.observaciones || ""
   };
 
@@ -116,11 +178,16 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
   // Convertir secuencias literales "\n" en saltos de línea reales
   cuerpo = cuerpo.replace(/\\n/g, "\n");
 
-  if (plantilla.incluir_datos_pago) {
+  // Casilla "Incluir datos de pago": SIEMPRE se agrega un bloque al final del mensaje
+  // (no importa si el cuerpo tenía {{alias_pago}} u otras variables).
+  const rawIncluir = (plantilla as { incluir_datos_pago?: unknown })
+    .incluir_datos_pago;
+  const incluirDatosPagoAlFinal =
+    rawIncluir === true || rawIncluir === "true" || rawIncluir === 1;
+  if (incluirDatosPagoAlFinal && !pagoTotal) {
     const bloque = buildBloqueDatosPago(datosPago);
-    if (bloque && !cuerpoUsaPlaceholdersPago(plantilla.cuerpo)) {
-      cuerpo = `${cuerpo.trimEnd()}\n\n${bloque}`;
-    }
+    const sufijo = bloque || BLOQUE_PAGO_VACIO;
+    cuerpo = `${cuerpo.trimEnd()}\n\n${sufijo}`;
   }
 
   return cuerpo;

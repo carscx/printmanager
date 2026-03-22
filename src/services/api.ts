@@ -13,11 +13,33 @@ export type HistorialFiltros = {
   fromDate?: string | null;
   toDate?: string | null;
   estado?: string | null;
-  clienteQuery?: string | null;
+  /**
+   * Búsqueda por nombre de cliente (ilike).
+   * Si el texto es solo dígitos (opcional #), también coincide por `numero_publico` exacto (OR).
+   */
+  busquedaClientePedido?: string | null;
   searchQuery?: string | null;
   tipoTrabajo?: "bn" | "color" | "anillado" | null;
   cobranza?: "todos" | "impago" | "pagado" | null;
 };
+
+/** Solo dígitos opcionalmente con # al inicio → número de pedido público. */
+function esSoloNumeroPedido(raw: string): boolean {
+  return /^#?\d+$/.test(raw.trim());
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyBusquedaClientePedido(query: any, raw: string | null | undefined) {
+  const q = (raw || "").trim();
+  if (!q) return query;
+  if (esSoloNumeroPedido(q)) {
+    const n = parseInt(q.replace(/^#/, "").trim(), 10);
+    if (Number.isFinite(n) && n > 0) {
+      return query.or(`cliente.ilike.%${q}%,numero_publico.eq.${n}`);
+    }
+  }
+  return query.ilike("cliente", `%${q}%`);
+}
 
 /** Mapeo a `pedido_items`: volumen = paginas × copias (no existe `cantidad`); anillado `anillado_medida_mm`. */
 function mapItemToDB(it: PedidoItem, pedidoId: string) {
@@ -89,7 +111,7 @@ export const api = {
       fromDate,
       toDate,
       estado,
-      clienteQuery,
+      busquedaClientePedido,
       searchQuery,
       tipoTrabajo,
       cobranza
@@ -133,8 +155,7 @@ export const api = {
     if (fromDate) query = query.gte("created_at", fromDate);
     if (toDate) query = query.lte("created_at", toDate);
     if (estado) query = query.eq("estado", estado);
-    if (clienteQuery && clienteQuery.trim())
-      query = query.ilike("cliente", `%${clienteQuery.trim()}%`);
+    query = applyBusquedaClientePedido(query, busquedaClientePedido);
 
     // Tipo de trabajo: basado en items embebidos (filtrado por existencia)
     // Nota: PostgREST permite filtros en relaciones; aquí usamos un filtro simple por ilike sobre tipo_impresion/anillado.
@@ -170,8 +191,7 @@ export const api = {
         if (fromDate) query = query.gte("created_at", fromDate);
         if (toDate) query = query.lte("created_at", toDate);
         if (estado) query = query.eq("estado", estado);
-        if (clienteQuery && clienteQuery.trim())
-          query = query.ilike("cliente", `%${clienteQuery.trim()}%`);
+        query = applyBusquedaClientePedido(query, busquedaClientePedido);
         if (tipoTrabajo === "bn") {
           query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
         } else if (tipoTrabajo === "color") {

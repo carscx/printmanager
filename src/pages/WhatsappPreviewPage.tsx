@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Pedido } from "../types/pedido";
 import type { PlantillaWhatsapp } from "../types/whatsapp";
 import { api } from "../services/api";
 import { whatsappApi } from "../services/whatsappApi";
-import { renderWhatsappMensaje } from "../services/whatsappService";
+import {
+  renderWhatsappMensaje,
+  selectPlantillaParaPedido
+} from "../services/whatsappService";
 import { showToast } from "../components/ui/Toast";
+import { WhatsappMensajeEditor } from "../components/whatsapp/WhatsappMensajeEditor";
 
 export function WhatsappPreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,37 +19,6 @@ export function WhatsappPreviewPage() {
   const [plantilla, setPlantilla] = useState<PlantillaWhatsapp | null>(null);
   const [mensaje, setMensaje] = useState("");
   const [loading, setLoading] = useState(true);
-  const editorRef = useRef<HTMLDivElement | null>(null);
-  const emojiPanelRef = useRef<HTMLDivElement | null>(null);
-  const [emojiOpen, setEmojiOpen] = useState(false);
-
-  const EMOJIS = [
-    "🙂",
-    "😀",
-    "😅",
-    "😂",
-    "😉",
-    "😍",
-    "🥳",
-    "🤝",
-    "🙏",
-    "👍",
-    "👎",
-    "✅",
-    "❌",
-    "⚠️",
-    "🕒",
-    "📌",
-    "📎",
-    "📄",
-    "🧾",
-    "💰",
-    "💳",
-    "🏦",
-    "📦",
-    "🖨️",
-    "🎉"
-  ];
 
   useEffect(() => {
     async function load() {
@@ -66,7 +39,7 @@ export function WhatsappPreviewPage() {
         const plantillas = await whatsappApi.fetchPlantillasByEstado(
           (p.estado || "presupuesto").toLowerCase()
         );
-        const plant = plantillas[0] ?? null;
+        const plant = selectPlantillaParaPedido(p, plantillas);
         setPlantilla(plant);
         if (plant) {
           const msg = renderWhatsappMensaje({
@@ -113,94 +86,6 @@ export function WhatsappPreviewPage() {
       showToast("NO SE PUDO COPIAR", "error");
     }
   };
-
-  const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const text = e.currentTarget.innerText;
-    setMensaje(text);
-  };
-
-  const focusEditor = () => {
-    editorRef.current?.focus();
-  };
-
-  const getEditorSelectionRange = (): Range | null => {
-    const editor = editorRef.current;
-    if (!editor) return null;
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return null;
-    const range = sel.getRangeAt(0);
-    if (!editor.contains(range.commonAncestorContainer)) return null;
-    return range;
-  };
-
-  const replaceRangeText = (range: Range, text: string) => {
-    range.deleteContents();
-    const node = document.createTextNode(text);
-    range.insertNode(node);
-    // Dejar cursor al final del nodo insertado
-    range.setStartAfter(node);
-    range.setEndAfter(node);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  };
-
-  const wrapSelection = (left: string, right = left) => {
-    focusEditor();
-    const range = getEditorSelectionRange();
-    if (!range) return;
-    const selected = range.toString();
-    if (selected.length === 0) {
-      // Insertar marcadores y dejar el cursor entre ellos
-      const text = `${left}${right}`;
-      range.deleteContents();
-      const node = document.createTextNode(text);
-      range.insertNode(node);
-
-      const cursorPos = left.length;
-      const newRange = document.createRange();
-      newRange.setStart(node, cursorPos);
-      newRange.setEnd(node, cursorPos);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(newRange);
-    } else {
-      replaceRangeText(range, `${left}${selected}${right}`);
-    }
-
-    // Sincronizar estado con el contenido del editor
-    if (editorRef.current) setMensaje(editorRef.current.innerText);
-  };
-
-  const insertAtCursor = (text: string) => {
-    focusEditor();
-    const range = getEditorSelectionRange();
-    if (!range) return;
-    replaceRangeText(range, text);
-    if (editorRef.current) setMensaje(editorRef.current.innerText);
-  };
-
-  // Mantener el contenido del contentEditable sincronizado
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerText !== mensaje) {
-      editorRef.current.innerText = mensaje;
-    }
-  }, [mensaje]);
-
-  // Cerrar el panel de emojis al clickear fuera
-  useEffect(() => {
-    if (!emojiOpen) return;
-    const onDown = (ev: MouseEvent) => {
-      const panel = emojiPanelRef.current;
-      const target = ev.target as Node | null;
-      if (!panel || !target) return;
-      if (!panel.contains(target)) {
-        setEmojiOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [emojiOpen]);
 
   if (loading) {
     return (
@@ -249,119 +134,7 @@ export function WhatsappPreviewPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-sm shadow-sm border border-slate-100 p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-            Mensaje (WYSIWYG básico)
-          </span>
-          <span className="text-[9px] text-slate-400">
-            Formato WhatsApp: * _ ~ `
-          </span>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <button
-            type="button"
-            onClick={() => wrapSelection("*")}
-            className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-            title="Negrita (*texto*)"
-          >
-            <span className="font-black">B</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection("_")}
-            className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-            title="Cursiva (_texto_)"
-          >
-            <span className="italic font-black">I</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection("~")}
-            className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-            title="Tachado (~texto~)"
-          >
-            <span className="line-through font-black">S</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection("`")}
-            className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-            title="Monoespacio (`texto`)"
-          >
-            <span className="font-mono font-black">{"</>"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => insertAtCursor("\n")}
-            className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-            title="Salto de línea"
-          >
-            ↵
-          </button>
-
-          {/* Emoji picker */}
-          <div className="relative" ref={emojiPanelRef}>
-            <button
-              type="button"
-              onClick={() => setEmojiOpen((v) => !v)}
-              className="px-3 py-2 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] cursor-pointer"
-              title="Insertar emoji"
-            >
-              😊
-            </button>
-            {emojiOpen && (
-              <div className="absolute z-40 mt-2 w-64 rounded-sm border border-slate-200 bg-white shadow-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                    Emojis
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setEmojiOpen(false)}
-                    className="text-slate-400 hover:text-slate-700 cursor-pointer"
-                    title="Cerrar"
-                  >
-                    <i className="fas fa-times" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-8 gap-2">
-                  {EMOJIS.map((em) => (
-                    <button
-                      key={em}
-                      type="button"
-                      onClick={() => {
-                        insertAtCursor(em);
-                        setEmojiOpen(false);
-                      }}
-                      className="h-8 w-8 rounded-sm bg-slate-50 hover:bg-slate-100 active:scale-95 transition cursor-pointer flex items-center justify-center text-base"
-                      title={em}
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Editor WYSIWYG muy básico basado en contentEditable */}
-        <div
-          ref={editorRef}
-          contentEditable
-          onInput={handleEditorInput}
-          className="min-h-[220px] w-full rounded-sm border border-slate-200 p-3 text-xs font-medium text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none whitespace-pre-wrap break-words"
-          spellCheck={false}
-        />
-
-        <p className="mt-1 text-[10px] text-slate-400">
-          El texto se envía tal cual lo ves aquí. WhatsApp aplicará formato a
-          *negrita*, _cursiva_, ~tachado~ y `monoespacio`.
-        </p>
-      </div>
+      <WhatsappMensajeEditor value={mensaje} onChange={setMensaje} />
 
       <div className="grid grid-cols-2 gap-3">
         <button

@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { whatsappApi } from "../services/whatsappApi";
-import type { PlantillaWhatsapp, PlantillaWhatsappInput } from "../types/whatsapp";
-import { ESTADO_DESTINO_LABELS } from "../types/whatsapp";
+import type {
+  PlantillaWhatsapp,
+  PlantillaWhatsappInput,
+  MatchCriterioPlantilla
+} from "../types/whatsapp";
+import { ESTADO_DESTINO_LABELS, MATCH_CRITERIO_LABELS } from "../types/whatsapp";
 import { useAuth } from "../hooks/useAuth";
 import { showToast } from "../components/ui/Toast";
 import { PlantillaFormSheet } from "../components/whatsapp/PlantillaFormSheet";
@@ -87,34 +91,6 @@ export function PlantillasWhatsappPage() {
     );
   };
 
-  const handleSubir = async (index: number) => {
-    if (index <= 0) return;
-    const actual = plantillas[index];
-    const anterior = plantillas[index - 1];
-    try {
-      await whatsappApi.updatePlantilla(actual.id, { orden: anterior.orden });
-      await whatsappApi.updatePlantilla(anterior.id, { orden: actual.orden });
-      showToast("ORDEN ACTUALIZADO");
-      await load();
-    } catch {
-      showToast("ERROR AL REORDENAR", "error");
-    }
-  };
-
-  const handleBajar = async (index: number) => {
-    if (index >= plantillas.length - 1) return;
-    const actual = plantillas[index];
-    const siguiente = plantillas[index + 1];
-    try {
-      await whatsappApi.updatePlantilla(actual.id, { orden: siguiente.orden });
-      await whatsappApi.updatePlantilla(siguiente.id, { orden: actual.orden });
-      showToast("ORDEN ACTUALIZADO");
-      await load();
-    } catch {
-      showToast("ERROR AL REORDENAR", "error");
-    }
-  };
-
   return (
     <section className="animate-fade-in space-y-4 pb-24 lg:max-w-3xl lg:mx-auto">
       <header className="flex items-end justify-between gap-4">
@@ -152,34 +128,12 @@ export function PlantillasWhatsappPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {plantillas.map((p, index) => (
+          {plantillas.map((p) => (
             <div
               key={p.id}
               className="bg-white rounded-sm border border-slate-100 shadow-sm overflow-hidden"
             >
               <div className="p-4 flex items-start gap-3">
-                {puedeEditar && (
-                  <div className="flex flex-col gap-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleSubir(index)}
-                      disabled={index === 0}
-                      className="p-2 rounded-sm text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                      title="Subir"
-                    >
-                      <i className="fas fa-chevron-up text-sm" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleBajar(index)}
-                      disabled={index === plantillas.length - 1}
-                      className="p-2 rounded-sm text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                      title="Bajar"
-                    >
-                      <i className="fas fa-chevron-down text-sm" />
-                    </button>
-                  </div>
-                )}
                 <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
@@ -187,6 +141,11 @@ export function PlantillasWhatsappPage() {
                   </span>
                   <span className="px-2 py-0.5 rounded-sm bg-slate-100 text-[10px] font-bold text-slate-600">
                     {ESTADO_DESTINO_LABELS[p.estado_destino as keyof typeof ESTADO_DESTINO_LABELS] ?? p.estado_destino}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-sm bg-blue-50 text-[10px] font-bold text-blue-800">
+                    {MATCH_CRITERIO_LABELS[
+                      (p.match_criterio ?? "any") as MatchCriterioPlantilla
+                    ]}
                   </span>
                   {!p.activo && (
                     <span className="px-2 py-0.5 rounded-sm bg-red-100 text-[10px] font-bold text-red-600">

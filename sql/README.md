@@ -6,7 +6,7 @@ Scripts en esta carpeta (`sql/` en la raíz del repo). En Supabase: **SQL Editor
 
 ## Orden de ejecución (una sola lista)
 
-Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`34`**.  
+Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`36`**.  
 **No hay `24` en la raíz**: el antiguo migrador de tinta ml → carillas está en **`archive/`** y solo aplica a bases legacy.
 
 ### Instalación desde cero (esquema + lógica; sin datos demo)
@@ -47,6 +47,8 @@ Ejecutá **en este orden**:
 | 30 | `32_postgrest_reload_schema.sql` |
 | 31 | `33_plantillas_whatsapp_seed_08_prod.sql` |
 | 32 | `34_plantillas_whatsapp_rls_operador.sql` |
+| 33 | `35_plantillas_whatsapp_sena_y_textos.sql` |
+| 34 | `36_plantillas_match_criterio.sql` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -61,8 +63,10 @@ Si el `08` ya corrió pero **faltan** migraciones posteriores al esquema que ten
 3. **`30_grants_authenticated_public.sql`** — si la API devuelve `permission denied for table` con usuario logueado.
 4. **`31_precios_impresion_tarifas_abm.sql`** — varias tarifas de impresión por combinación tipo/cara (solo una activa); columna `nombre`. Necesaria para el ABM de tarifas en la app. Incluye `NOTIFY pgrst` al final.
 5. **`32_postgrest_reload_schema.sql`** — solo si la API sigue con **PGRST204** (`nombre` / schema cache): fuerza recarga de PostgREST. También podés ejecutar solo: `NOTIFY pgrst, 'reload schema';`
+6. **`35_plantillas_whatsapp_sena_y_textos.sql`** — (opcional, PROD) actualiza por `id` los textos de plantillas: seña, `{{resta}}` en “listo”, variable `{{linea_sena}}`, emojis. La app elige “Seña recibida” vs “Pedido confirmado” según el pedido.
+7. **`36_plantillas_match_criterio.sql`** — columna `match_criterio` en `plantillas_whatsapp` (`any`, `pago_total`, `con_sena`, `sin_sena`); la app elige plantilla por **estado** + **situación de pago** (sin usar `orden`). Incluye plantilla opcional “Pago total recibido” para `pendiente` cuando la seña cubre el total.
 
-Orden: **siempre 28 antes que 29**.  
+Orden: **siempre 28 antes que 29**. **35** antes de **36** si usás ambos (36 es idempotente respecto a la columna).  
 Si recreás todo desde cero, el `08` moderno ya trae plantillas alineadas; el `29` igual puede ejecutarse (no duplica si ya está actualizado).
 
 ---

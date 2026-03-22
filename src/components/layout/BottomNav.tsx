@@ -6,11 +6,22 @@ import type { UserRole } from "../../types/auth";
 
 export type { NavItem };
 
-/** En mobile "Más": todo excepto Pedidos y Nuevo (van fijos en la barra). */
+/**
+ * En mobile "Más": todo excepto Pedidos y Nuevo (van fijos en la barra).
+ * Para no-admin, "Inicio" en la lista global usa el mismo path que Pedidos (`/pedidos`)
+ * y se filtraba entero: aquí se antepone Inicio con `path: "/"` (HomeRedirect → /pedidos).
+ */
 function buildMobileMore(isAdmin: boolean, role: UserRole): NavItem[] {
-  return buildNavItems(isAdmin, role).filter(
+  const filtered = buildNavItems(isAdmin, role).filter(
     (i) => i.path !== "/pedidos" && i.path !== "/nuevo-pedido"
   );
+  if (!isAdmin) {
+    return [
+      { path: "/", icon: "fa-home", label: "Inicio" },
+      ...filtered
+    ];
+  }
+  return filtered;
 }
 
 export function BottomNav({
