@@ -115,7 +115,9 @@ function AuthenticatedShell({
                 path="/equipos"
                 element={
                   <ProtectedRoute user={user}>
-                    <EquiposPage />
+                    <NonOperadorRoute user={user}>
+                      <EquiposPage />
+                    </NonOperadorRoute>
                   </ProtectedRoute>
                 }
               />

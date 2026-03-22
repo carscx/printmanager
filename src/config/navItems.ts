@@ -23,7 +23,9 @@ const TAIL: NavItem[] = [
 export function buildNavItems(isAdmin: boolean, role: UserRole): NavItem[] {
   const tail =
     role === "operador"
-      ? TAIL.filter((i) => i.path !== "/precios")
+      ? TAIL.filter(
+          (i) => i.path !== "/precios" && i.path !== "/equipos"
+        )
       : TAIL;
   if (isAdmin) {
     return [
