@@ -17,7 +17,7 @@ const ETIQUETA_CATEGORIA_ANILLADO: Record<string, string> = {
 };
 
 /**
- * Texto de anillado para el cliente (WhatsApp): solo Chico/Mediano/Grande,
+ * Texto de anillado para el cliente (WhatsApp): "Anillado Chico|Mediano|Grande",
  * sin mm de espiral ni "hasta X hjs".
  */
 function anilladoTextoCliente(anillado: string | null | undefined): string {
@@ -26,13 +26,20 @@ function anilladoTextoCliente(anillado: string | null | undefined): string {
   const cat = t.match(/^(Chico|Mediano|Grande)\s*·/i);
   if (cat) {
     const key = cat[1].toLowerCase();
-    return ETIQUETA_CATEGORIA_ANILLADO[key] ?? cat[1];
+    const nombre = ETIQUETA_CATEGORIA_ANILLADO[key] ?? cat[1];
+    return `Anillado ${nombre}`;
   }
   const sinMedida = t
     .replace(/\s*\d+mm/gi, "")
     .replace(/\s*\(hasta\s*\d+\s*hjs\)/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  const soloCat = sinMedida.match(/^(Chico|Mediano|Grande)$/i);
+  if (soloCat) {
+    const key = soloCat[1].toLowerCase();
+    const nombre = ETIQUETA_CATEGORIA_ANILLADO[key] ?? soloCat[1];
+    return `Anillado ${nombre}`;
+  }
   return sinMedida || "Anillado";
 }
 
