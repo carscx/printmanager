@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Evolution API (repo externo; no versionar)
+evolution-api/
