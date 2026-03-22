@@ -6,7 +6,7 @@ Scripts en esta carpeta (`sql/` en la raíz del repo). En Supabase: **SQL Editor
 
 ## Orden de ejecución (una sola lista)
 
-Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`31`**.  
+Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`32`**.  
 **No hay `24` en la raíz**: el antiguo migrador de tinta ml → carillas está en **`archive/`** y solo aplica a bases legacy.
 
 ### Instalación desde cero (esquema + lógica; sin datos demo)
@@ -44,6 +44,7 @@ Ejecutá **en este orden**:
 | 27 | `29_plantillas_whatsapp_estados.sql` |
 | 28 | `30_grants_authenticated_public.sql` |
 | 29 | `31_precios_impresion_tarifas_abm.sql` |
+| 30 | `32_postgrest_reload_schema.sql` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -56,7 +57,8 @@ Si el `08` ya corrió pero **faltan** migraciones posteriores al esquema que ten
 1. **`28_pedidos_maquina_estados_unificada.sql`** — estados unificados (presupuesto → pendiente → listo → …), stock al pasar a pendiente, RPC y vistas.
 2. **`29_plantillas_whatsapp_estados.sql`** — alinea `plantillas_whatsapp.estado_destino` (p. ej. `señado` → `pendiente`, plantilla `listo`). Idempotente.
 3. **`30_grants_authenticated_public.sql`** — si la API devuelve `permission denied for table` con usuario logueado.
-4. **`31_precios_impresion_tarifas_abm.sql`** — varias tarifas de impresión por combinación tipo/cara (solo una activa); columna `nombre`. Necesaria para el ABM de tarifas en la app.
+4. **`31_precios_impresion_tarifas_abm.sql`** — varias tarifas de impresión por combinación tipo/cara (solo una activa); columna `nombre`. Necesaria para el ABM de tarifas en la app. Incluye `NOTIFY pgrst` al final.
+5. **`32_postgrest_reload_schema.sql`** — solo si la API sigue con **PGRST204** (`nombre` / schema cache): fuerza recarga de PostgREST. También podés ejecutar solo: `NOTIFY pgrst, 'reload schema';`
 
 Orden: **siempre 28 antes que 29**.  
 Si recreás todo desde cero, el `08` moderno ya trae plantillas alineadas; el `29` igual puede ejecutarse (no duplica si ya está actualizado).

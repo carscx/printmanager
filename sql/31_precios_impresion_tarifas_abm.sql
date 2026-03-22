@@ -39,3 +39,6 @@ DROP INDEX IF EXISTS public.precios_impresion_uniq_activo_tipo_doble;
 CREATE UNIQUE INDEX precios_impresion_uniq_activo_tipo_doble
   ON public.precios_impresion (tipo, doble_faz)
   WHERE (activo = true);
+
+-- PostgREST (API) cachea el esquema: sin esto puede seguir el error PGRST204 hasta minutos.
+NOTIFY pgrst, 'reload schema';

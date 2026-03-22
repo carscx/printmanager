@@ -7,6 +7,15 @@ import type {
 } from "../types/precio";
 import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
 
+/** PostgREST puede tener caché vieja tras ALTER; reintenta sin `nombre`. */
+function esErrorSchemaCacheNombre(err: unknown): boolean {
+  const e = err as { code?: string; message?: string };
+  return (
+    e?.code === "PGRST204" ||
+    (typeof e?.message === "string" && e.message.includes("nombre"))
+  );
+}
+
 export const preciosApi = {
   // ── CONFIGURACIÓN DE NEGOCIO (Épica 1, single row) ───────────────────────
 
@@ -115,20 +124,25 @@ export const preciosApi = {
     if (conflict?.id && activo) {
       activo = false;
     }
-    const { data, error } = await sb
-      .from("precios_impresion")
-      .insert({
-        tipo: input.tipo,
-        doble_faz: input.doble_faz,
-        precio_venta: input.precio_venta,
-        nombre: (input.nombre ?? "").trim(),
-        activo,
-        updated_by: uid
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as PrecioImpresion;
+    const payloadFull = {
+      tipo: input.tipo,
+      doble_faz: input.doble_faz,
+      precio_venta: input.precio_venta,
+      nombre: (input.nombre ?? "").trim(),
+      activo,
+      updated_by: uid
+    };
+    let res = await sb.from("precios_impresion").insert(payloadFull).select().single();
+    if (res.error && esErrorSchemaCacheNombre(res.error)) {
+      const { nombre: _n, ...sinNombre } = payloadFull;
+      res = await sb
+        .from("precios_impresion")
+        .insert(sinNombre)
+        .select()
+        .single();
+    }
+    if (res.error) throw res.error;
+    return res.data as PrecioImpresion;
   },
 
   async actualizarPrecioImpresionCompleto(
@@ -144,12 +158,21 @@ export const preciosApi = {
     if (patch.precio_venta !== undefined)
       row.precio_venta = patch.precio_venta;
     if (patch.activo !== undefined) row.activo = patch.activo;
-    const { data, error } = await sb
+    let upd = await sb
       .from("precios_impresion")
       .update(row)
       .eq("id", id)
       .select("id");
-    if (error) throw error;
+    if (upd.error && esErrorSchemaCacheNombre(upd.error) && "nombre" in row) {
+      const { nombre: _n, ...sinNombre } = row;
+      upd = await sb
+        .from("precios_impresion")
+        .update(sinNombre)
+        .eq("id", id)
+        .select("id");
+    }
+    if (upd.error) throw upd.error;
+    const data = upd.data;
     if (!data?.length) {
       throw new Error(
         "No se guardó la tarifa (sin filas actualizadas). ¿Rol admin?"
