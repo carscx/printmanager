@@ -10,6 +10,32 @@ interface RenderContext {
   datosPago: ConfigCosto[];
 }
 
+const ETIQUETA_CATEGORIA_ANILLADO: Record<string, string> = {
+  chico: "Chico",
+  mediano: "Mediano",
+  grande: "Grande"
+};
+
+/**
+ * Texto de anillado para el cliente (WhatsApp): solo Chico/Mediano/Grande,
+ * sin mm de espiral ni "hasta X hjs".
+ */
+function anilladoTextoCliente(anillado: string | null | undefined): string {
+  const t = (anillado ?? "").trim();
+  if (!t) return "";
+  const cat = t.match(/^(Chico|Mediano|Grande)\s*·/i);
+  if (cat) {
+    const key = cat[1].toLowerCase();
+    return ETIQUETA_CATEGORIA_ANILLADO[key] ?? cat[1];
+  }
+  const sinMedida = t
+    .replace(/\s*\d+mm/gi, "")
+    .replace(/\s*\(hasta\s*\d+\s*hjs\)/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return sinMedida || "Anillado";
+}
+
 function buildDetalle(items: PedidoItem[]): string {
   if (items.length === 0) return "- (sin items)\n";
   return items
@@ -17,7 +43,8 @@ function buildDetalle(items: PedidoItem[]): string {
       const paginas = it.paginas || 0;
       const copias = it.copias ?? 1;
       const tipo = it.tipo_impresion || "B/N";
-      const ani = it.anillado ? ` + ${it.anillado}` : "";
+      const aniLabel = anilladoTextoCliente(it.anillado);
+      const ani = aniLabel ? ` + ${aniLabel}` : "";
       const copiasTxt = copias > 1 ? ` x${copias}` : "";
       return `- ${paginas} pág ${tipo}${ani}${copiasTxt}`;
     })
