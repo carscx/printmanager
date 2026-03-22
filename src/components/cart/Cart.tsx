@@ -62,27 +62,21 @@ export function Cart({
     if (descRecGlobalValor?.trim()) setShowDescRecGlobal(true);
   }, [descRecGlobalValor]);
 
-  // Calcular total con descuento/recargo global
-  let total = getTotal();
+  // Total incluye desc/rec global (misma lógica que `getTotal()` en el store)
+  const total = getTotal();
   let descRecGlobalLabel = "";
   if (showDescRecGlobal && descRecGlobalValor) {
     const val = Number(descRecGlobalValor);
     if (descRecGlobalTipo === "descuento") {
       if (descRecGlobalModo === "porcentaje") {
         descRecGlobalLabel = `- ${val}%`;
-        total -= Math.round(total * (val / 100));
       } else {
         descRecGlobalLabel = `- $${val}`;
-        total -= val;
       }
+    } else if (descRecGlobalModo === "porcentaje") {
+      descRecGlobalLabel = `+ ${val}%`;
     } else {
-      if (descRecGlobalModo === "porcentaje") {
-        descRecGlobalLabel = `+ ${val}%`;
-        total += Math.round(total * (val / 100));
-      } else {
-        descRecGlobalLabel = `+ $${val}`;
-        total += val;
-      }
+      descRecGlobalLabel = `+ $${val}`;
     }
   }
   const sena = getSena();

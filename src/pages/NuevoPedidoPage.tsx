@@ -218,6 +218,9 @@ export function NuevoPedidoPage() {
     return Math.round(total * (pct / 100) * 100) / 100;
   }, [
     cart.items,
+    cart.descRecGlobalValor,
+    cart.descRecGlobalTipo,
+    cart.descRecGlobalModo,
     cart.editandoPedidoId,
     cart.vendedorId,
     user?.id,

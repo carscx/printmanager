@@ -9,6 +9,7 @@ import { SkeletonPedidoList } from "../components/ui/Skeleton";
 import { useCartStore } from "../store/useCartStore";
 import { api, type HistorialFiltros } from "../services/api";
 import { normalizarEstadoPedido } from "../utils/pedidoEstado";
+import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 import { pedidosToCSV } from "../utils/pedidosCsv";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
 import { useAuth } from "../hooks/useAuth";
@@ -247,7 +248,7 @@ export function PedidosPage() {
 
   const handleTransition = async (p: Pedido, nuevo: EstadoPedido) => {
     const act = normalizarEstadoPedido(p.estado);
-    const totalP = Number(p.total ?? p.total_pedido ?? 0);
+    const totalP = totalVentaPedido(p);
 
     try {
       if (nuevo === "cancelado") {

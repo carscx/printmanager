@@ -1,4 +1,5 @@
 import type { Pedido } from "../types/pedido";
+import { totalVentaPedido } from "./pedidoTotalVenta";
 
 export function pedidosToCSV(pedidos: Pedido[]) {
   const headers = [
@@ -24,7 +25,7 @@ export function pedidosToCSV(pedidos: Pedido[]) {
       p.id,
       p.cliente,
       p.estado,
-      String(p.total ?? p.total_pedido ?? 0),
+      String(totalVentaPedido(p)),
       String(p.sena ?? 0),
       p.fecha_entrega ?? "",
       p.fecha_pago ?? "",

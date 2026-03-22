@@ -5,6 +5,7 @@ import type {
 } from "../types/whatsapp";
 import type { ConfigCosto } from "../types/precio";
 import { formatCurrency } from "../utils/formatters";
+import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 
 interface RenderContext {
   pedido: Pedido;
@@ -105,7 +106,7 @@ function leerMatchCriterio(p: PlantillaWhatsapp): MatchCriterioPlantilla {
 export function criterioPagoDesdePedido(
   pedido: Pedido
 ): MatchCriterioPlantilla {
-  const totalP = Number(pedido.total ?? pedido.total_pedido ?? 0) || 0;
+  const totalP = totalVentaPedido(pedido) || 0;
   const senaP = Number(pedido.sena ?? 0) || 0;
   if (totalP <= EPS_PESOS) {
     if (senaP > EPS_PESOS) return "con_sena";
@@ -144,7 +145,7 @@ export function selectPlantillaParaPedido(
 export function renderWhatsappMensaje(ctx: RenderContext): string {
   const { pedido, items, plantilla, datosPago } = ctx;
 
-  const totalP = Number(pedido.total ?? pedido.total_pedido ?? 0) || 0;
+  const totalP = totalVentaPedido(pedido) || 0;
   const senaP = Number(pedido.sena ?? 0) || 0;
   const restaP = Math.max(0, totalP - senaP);
   const pagoTotal = esPagoTotalAnticipado(pedido);

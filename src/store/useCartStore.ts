@@ -9,6 +9,10 @@ import {
   snapshotFromPedido,
   type PedidoEditSnapshot
 } from "../utils/pedidoCartHydrate";
+import {
+  aplicarDescRecGlobalACarrito,
+  totalVentaPedido
+} from "../utils/pedidoTotalVenta";
 
 export interface CartState {
   items: PedidoItem[];
@@ -105,7 +109,7 @@ export const useCartStore = create<CartState>()(
       setSenaLibreMonto: (senaLibreMonto) => set({ senaLibreMonto }),
       setEditandoPedidoId: (editandoPedidoId) => set({ editandoPedidoId }),
       hydrateFromPedido: (p) => {
-        const totalP = Number(p.total ?? p.total_pedido ?? 0);
+        const totalP = totalVentaPedido(p);
         const { tipoPago, senaLibreMonto } = inferTipoPagoSena(totalP, p.sena);
         const g = globalDescFromPedido(p);
         set({
@@ -137,8 +141,19 @@ export const useCartStore = create<CartState>()(
 
       reset: () => set({ ...initialState }),
 
-      getTotal: () =>
-        get().items.reduce((acc, it) => acc + (it.precio_unitario || 0), 0),
+      getTotal: () => {
+        const s = get();
+        const sub = s.items.reduce(
+          (acc, it) => acc + (it.precio_unitario || 0),
+          0
+        );
+        return aplicarDescRecGlobalACarrito(
+          sub,
+          s.descRecGlobalTipo,
+          s.descRecGlobalModo,
+          s.descRecGlobalValor
+        );
+      },
 
       getSena: () => {
         const total = get().getTotal();

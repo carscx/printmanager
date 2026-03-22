@@ -1,5 +1,6 @@
 import type { Pedido, EstadoPedido } from "../../types/pedido";
 import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
+import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 
 interface PedidoEstadoSwitcherProps {
   pedido: Pedido;
@@ -20,7 +21,7 @@ export function PedidoEstadoSwitcher({
   disabled
 }: PedidoEstadoSwitcherProps) {
   const estado = normalizarEstadoPedido(pedido.estado);
-  const totalP = Number(pedido.total ?? pedido.total_pedido ?? 0);
+  const totalP = totalVentaPedido(pedido);
 
   switch (estado) {
     case "presupuesto":

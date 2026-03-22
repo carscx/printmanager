@@ -1,6 +1,7 @@
 import type { Pedido, PedidoItem } from "../types/pedido";
 import type { PedidoItemInsumo } from "../types/precio";
 import { agregarDescuentosRecargos } from "./descuentosReport";
+import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 
 export interface SerieDiaria {
   fecha: string;
@@ -88,7 +89,7 @@ export function calcularRentabilidad(
   const activos = pedidosPeriodo.filter((p) => p.estado !== "cancelado");
 
   const ingresosBrutos = activos.reduce(
-    (s, p) => s + Number(p.total ?? p.total_pedido ?? 0),
+    (s, p) => s + totalVentaPedido(p),
     0
   );
 
@@ -124,7 +125,7 @@ export function calcularRentabilidad(
   const diaCosto = new Map<string, number>();
   for (const p of activos) {
     const d = fechaLocal(p.created_at);
-    const t = Number(p.total ?? p.total_pedido ?? 0);
+    const t = totalVentaPedido(p);
     diaIngreso.set(d, (diaIngreso.get(d) || 0) + t);
   }
   for (const c of consumos) {

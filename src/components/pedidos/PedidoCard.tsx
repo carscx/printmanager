@@ -4,6 +4,7 @@ import { PedidoEstadoSwitcher } from "./PedidoEstadoSwitcher";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDateFromInput } from "../../utils/formatters";
 import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
+import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { showToast } from "../ui/Toast";
 
@@ -36,7 +37,7 @@ export function PedidoCard({
 
   const items = p.pedido_items || [];
   const fDate = p.fecha_entrega ? formatDateFromInput(p.fecha_entrega) : "⏳";
-  const totalP = Number(p.total ?? p.total_pedido ?? 0);
+  const totalP = totalVentaPedido(p);
   const senaP = Number(p.sena ?? 0);
 
   const etiquetaEstado: Record<EstadoPedido, string> = {
