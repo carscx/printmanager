@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.github
+evolution-api
+old-html
+*.md
+.env
+.env.*

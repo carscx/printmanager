@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/**
+ * Botones: más redondeo que cards/paneles (mantienen rounded-sm en el markup).
+ * Equivale a rounded-xl de Tailwind (~0.75rem). No afecta div/input/textarea.
+ */
+@layer utilities {
+  button.rounded-sm {
+    border-radius: 0.75rem;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-zoom-in {
+  animation: zoom-in 0.2s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-from-bottom 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
+@keyframes alert-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.35);
+  }
+  50% {
+    opacity: 0.92;
+    box-shadow: 0 0 0 6px rgb(239 68 68 / 0);
+  }
+}
+
+.animate-alert-pulse {
+  animation: alert-pulse 1.4s ease-in-out infinite;
+}
+
+body {
+  overscroll-behavior-y: contain;
+}

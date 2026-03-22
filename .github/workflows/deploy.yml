@@ -1,26 +1,62 @@
-name: Deploy to CloudPanel (FTP)
+name: Deploy PROD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # El nombre de la imagen DEBE ir en minúsculas
+          tags: ghcr.io/${{ github.repository_owner }}/printmanager:latest
+          build-args: |
+            VITE_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }}
+
   deploy:
-    name: FTP Deploy
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Get latest code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # Necesitamos el checkout para pillar el docker-compose.yml del repo
 
-      - name: 📂 Sync files via Rsync
-        uses: Burnett01/rsync-deployments@7.0.0
+      - name: Copiar docker-compose al VPS
+        uses: appleboy/scp-action@master
         with:
-          switches: -rvz --delete --omit-dir-times --no-perms --no-owner --no-group
-          path: .
-          remote_path: /home/carscx-printmanager/htdocs/printmanager.carscx.com/
-          remote_host: ${{ secrets.SSH_SERVER }}
-          remote_user: ${{ secrets.SSH_USER }}
-          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
-          remote_port: 22
-          args: --exclude='.git*' --exclude='.github*' --exclude='node_modules' --exclude='update_schema.sql' --exclude='deploy_key*'
+          host: ${{ secrets.SERVER_IP }}
+          username: carscx-printmanager
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/carscx-printmanager/app/"
+
+      - name: SSH Remote Command
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: carscx-printmanager
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cd /home/carscx-printmanager/app/
+            # Sed para asegurar que use la imagen correcta con el owner en minúsculas
+            sed -i "s|image:.*|image: ghcr.io/${{ github.repository_owner }}/printmanager:latest|g" docker-compose.yml
+            docker compose pull
+            docker compose up -d
+            docker image prune -f

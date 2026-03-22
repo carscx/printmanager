@@ -1,0 +1,7 @@
+services:
+  printmanager:
+    image: ghcr.io/tu-usuario/printmanager:latest
+    container_name: printmanager-app
+    ports:
+      - "3010:80"
+    restart: always

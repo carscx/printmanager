@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintManager</title>
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <script src="/tailwind.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    .hidden {
+      display: none !important;
+    }
+
+    body {
+      overscroll-behavior-y: contain;
+    }
+
+    /* Misma idea que en la app React: botones más redondeados que el resto */
+    button.rounded-sm {
+      border-radius: 0.75rem;
+    }
+
+    @media (max-width: 1024px) {
+      .sticky-mobile {
+        position: sticky;
+        top: 20px;
+        z-index: 40;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-16 font-sans text-slate-900">
+
+  <div id="modalConfirm"
+    class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div
+      class="bg-white w-full max-w-sm rounded-sm shadow-2xl p-8 text-center animate-in zoom-in duration-200 border border-slate-100">
+      <div id="confirmIcon" class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"></div>
+      <h3 id="confirmTitle" class="text-xl font-black text-slate-800 mb-2"></h3>
+      <p id="confirmText" class="text-slate-500 mb-8 text-sm"></p>
+      <div class="flex gap-4">
+        <button onclick="cerrarConfirm()" class="flex-1 py-4 font-bold text-slate-400 text-sm">No</button>
+        <button id="confirmBtnAction"
+          class="flex-1 py-4 text-white font-bold rounded-sm shadow-lg uppercase text-[10px] tracking-widest font-black">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalAjustes"
+    class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white w-full max-w-lg rounded-sm shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+      <div id="modalAuth" class="p-8 text-center">
+        <h3 class="text-xl font-bold mb-5">Acceso Admin</h3>
+        <input type="password" id="adminPass" onkeyup="if(event.key==='Enter') validarAcceso()"
+          class="w-full p-4 bg-slate-100 rounded-sm mb-5 text-center outline-none border-2 border-transparent focus:border-blue-500 font-black">
+        <div class="flex gap-4">
+          <button onclick="cerrarModal()" class="flex-1 py-3 font-bold text-slate-400 text-sm">Cerrar</button>
+          <button onclick="validarAcceso()"
+            class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-sm shadow-lg">Entrar</button>
+        </div>
+      </div>
+      <div id="modalForm" class="hidden h-[85vh] flex flex-col">
+        <div class="p-6 border-b flex justify-between items-center bg-white">
+          <h3 class="font-black text-lg uppercase italic text-gray-800">Tarifas y Datos</h3>
+          <button onclick="cerrarModal()" class="text-slate-300 hover:text-red-500 p-3"><i
+              class="fas fa-times fa-lg"></i></button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-4 flex-1 bg-slate-50 scroll-custom" id="inputsConfig"></div>
+        <div class="p-6 bg-white border-t">
+          <button onclick="guardarCambiosConfig()" id="btnGuardar"
+            class="w-full bg-blue-600 text-white py-4 rounded-sm font-black uppercase text-xs tracking-widest shadow-xl">Guardar
+            Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto p-4 md:p-6">
+    <header
+      class="flex justify-between items-center mb-6 px-3 bg-white p-4 rounded-sm shadow-sm border border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="w-2.5 h-8 bg-blue-600 rounded-full shadow-sm"></div>
+        <h1 class="text-2xl font-black tracking-tighter italic uppercase leading-none">Gestión Moni</h1>
+      </div>
+      <div class="flex gap-2">
+        <button id="btnViewHome" onclick="navigateTo('home')"
+          class="w-11 h-11 flex items-center justify-center bg-blue-600 text-white rounded-sm shadow-sm transition-all hidden">
+          <i class="fas fa-home fa-lg"></i>
+        </button>
+        <button onclick="abrirAjustes()"
+          class="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 rounded-sm hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+          <i class="fas fa-cog fa-lg"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- VISTA: LISTADO DE PEDIDOS (HOME) -->
+    <section id="view-home" class="animate-in fade-in duration-500">
+      <div class="grid lg:grid-cols-3 gap-8">
+        <!-- Resumen de Caja -->
+        <div class="lg:col-span-1 space-y-4">
+          <div class="bg-white p-6 rounded-sm shadow-sm border border-slate-100">
+            <h2
+              class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-4 italic text-center leading-none">
+              Resumen Hoy</h2>
+            <div id="resumen-hoy"></div>
+          </div>
+          <button onclick="navigateTo('nuevo-pedido')"
+            class="w-full bg-blue-600 text-white py-6 rounded-sm font-black uppercase text-sm tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-3">
+            <i class="fas fa-plus-circle fa-xl"></i>
+            Nuevo Pedido
+          </button>
+        </div>
+
+        <!-- Listado -->
+        <div class="lg:col-span-2 space-y-4">
+          <div
+            class="flex bg-white p-1.5 rounded-sm shadow-sm border border-slate-100 overflow-hidden mb-4 sticky top-2 lg:relative lg:top-0 z-30">
+            <button id="tabTaller" onclick="cambiarVista('taller')"
+              class="flex-1 py-3 rounded-sm font-black text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-white shadow-sm">En
+              taller</button>
+            <button id="tabHistorial" onclick="cambiarVista('historial')"
+              class="flex-1 py-3 rounded-sm font-black text-[10px] uppercase tracking-widest transition-all text-slate-400">Historial</button>
+          </div>
+          <div id="lista" class="space-y-4 pb-24 lg:pb-10"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA: FORMULARIO DE NUEVO PEDIDO -->
+    <section id="view-nuevo-pedido" class="hidden animate-in slide-in-from-bottom duration-500">
+      <div class="grid lg:grid-cols-2 gap-8">
+        <!-- Formulario de Item -->
+        <div class="bg-white p-6 rounded-sm shadow-xl border border-slate-100">
+          <h2 class="text-xs font-black text-slate-300 uppercase tracking-[0.2em] mb-6 italic leading-none">Configurar
+            Archivo</h2>
+          <div class="space-y-5">
+            <div class="space-y-1">
+              <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Nombre del Cliente</label>
+              <input type="text" id="cliente" placeholder="¿A quién le pertenece este pedido?"
+                class="w-full p-4 bg-slate-50 rounded-sm outline-none focus:ring-2 focus:ring-blue-100 font-bold border border-slate-50 transition-all">
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+              <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Páginas del PDF</label>
+                <input type="number" id="paginas" value="0"
+                  class="w-full p-4 bg-slate-50 rounded-sm font-black text-xl text-blue-600 border border-slate-100 focus:bg-white transition-colors">
+              </div>
+              <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Tinta</label>
+                <select id="tipo"
+                  class="w-full p-4 bg-slate-50 rounded-sm font-bold outline-none border border-slate-50 cursor-pointer">
+                  <option value="bn">B&N</option>
+                  <option value="color">Color</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+              <label
+                class="flex items-center cursor-pointer bg-slate-50 p-4 rounded-sm border-2 border-transparent has-[:checked]:border-blue-500 transition-all shadow-sm">
+                <input type="checkbox" id="df" class="w-6 h-6 text-blue-600 rounded">
+                <span class="ml-3 text-xs font-black text-slate-700 uppercase italic leading-none">Doble Faz</span>
+              </label>
+              <label
+                class="flex items-center cursor-pointer bg-slate-50 p-4 rounded-sm border-2 border-transparent has-[:checked]:border-amber-500 transition-all shadow-sm">
+                <input type="checkbox" id="solo_ani" onchange="toggleSoloAnillado()"
+                  class="w-6 h-6 text-amber-500 rounded">
+                <span class="ml-3 text-xs font-black text-slate-700 uppercase italic leading-none">Solo Anillar</span>
+              </label>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Tipo de Anillado</label>
+              <select id="ani"
+                class="w-full p-4 bg-slate-50 rounded-sm font-bold text-slate-600 outline-none text-[10px] border border-slate-50 cursor-pointer">
+                <option value="0">SIN ANILLAR</option>
+                <option value="esp_s">ANILLADO CHICO (1-70 hjs)</option>
+                <option value="esp_m">ANILLADO MEDIANO (71-150 hjs)</option>
+                <option value="esp_l">ANILLADO GRANDE (151-500 hjs)</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <div class="flex-1 space-y-1">
+                <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Fecha de Entrega</label>
+                <input type="date" id="fecha_entrega"
+                  class="w-full p-4 bg-blue-50/30 rounded-sm outline-none text-blue-900 font-bold border border-blue-100">
+              </div>
+              <label
+                class="flex-1 flex items-center justify-center cursor-pointer bg-purple-50 p-4 rounded-sm border-2 border-transparent has-[:checked]:border-purple-500 transition-all shadow-sm h-[58px] mt-[17px]">
+                <input type="checkbox" id="sobrina_check" class="w-6 h-6 text-purple-600 rounded">
+                <span class="ml-3 text-xs font-black text-purple-700 uppercase italic leading-none text-center">Hecho
+                  por
+                  Avru</span>
+              </label>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[10px] font-black text-slate-400 ml-2 uppercase">Notas del Archivo</label>
+              <input type="text" id="item_notas" placeholder="Ej: Anillado azul, cartulina roja..."
+                class="w-full p-4 bg-slate-50 rounded-sm outline-none focus:ring-2 focus:ring-blue-100 font-bold border border-slate-50 transition-all text-xs">
+            </div>
+
+            <button onclick="agregarItemALista()"
+              class="w-full bg-slate-900 text-white py-5 rounded-sm font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2">
+              <i class="fas fa-cart-plus"></i>
+              Añadir este Archivo
+            </button>
+          </div>
+        </div>
+
+        <!-- Carrito de Items del Pedido Nuevo -->
+        <div class="flex flex-col h-full space-y-6">
+          <div class="bg-white p-6 rounded-sm shadow-sm border border-slate-100 flex-1 flex flex-col">
+            <h2 class="text-xs font-black text-slate-300 uppercase tracking-[0.2em] mb-4 italic leading-none">Items del
+              Pedido Actual</h2>
+            <div id="items-pedido-nuevo" class="space-y-3 flex-1 overflow-y-auto max-h-[40vh] scroll-custom mb-6">
+              <!-- Aquí se verán los items que vamos sumando -->
+              <div class="text-center py-10 text-slate-300 italic text-sm">Aún no hay archivos sumados</div>
+            </div>
+
+            <div class="p-6 bg-slate-900 rounded-sm text-white shadow-xl mt-auto">
+              <div class="flex justify-between items-center mb-4 leading-none">
+                <span class="text-slate-500 font-black text-[10px] uppercase tracking-widest">Total Pedido</span>
+                <span class="text-3xl font-black text-green-400" id="t-total-nuevo">$ 0</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1 bg-slate-800 p-1 rounded-sm mb-3">
+                <button type="button" onclick="selPago('sin_pago')" id="pago-sin_pago"
+                  class="pago-opt py-2 rounded-sm text-[8px] font-black uppercase tracking-wider bg-white/10 text-white">Sin
+                  pago</button>
+                <button type="button" onclick="selPago('sena_50')" id="pago-sena_50"
+                  class="pago-opt py-2 rounded-sm text-[8px] font-black uppercase tracking-wider text-slate-500">50%</button>
+                <button type="button" onclick="selPago('sena_libre')" id="pago-sena_libre"
+                  class="pago-opt py-2 rounded-sm text-[8px] font-black uppercase tracking-wider text-slate-500">Libre</button>
+                <button type="button" onclick="selPago('pago_total')" id="pago-pago_total"
+                  class="pago-opt py-2 rounded-sm text-[8px] font-black uppercase tracking-wider text-slate-500">Total</button>
+              </div>
+              <div id="sena-libre-container" class="hidden mb-3">
+                <input type="number" id="sena_libre_monto" placeholder="Monto de seña" oninput="actualizarSenaLibre()"
+                  class="w-full p-3 bg-slate-800 rounded-sm text-white font-black text-center border border-slate-700 outline-none focus:border-blue-500">
+              </div>
+              <div class="flex justify-between items-center pt-3 border-t border-white/10 leading-none">
+                <span class="text-slate-500 font-bold text-xs uppercase tracking-tighter" id="t-sena-label">Sin
+                  pago</span>
+                <span class="font-black text-blue-400" id="t-sena-nuevo">$ 0</span>
+              </div>
+              <div class="flex justify-between items-center pt-2 leading-none">
+                <span class="text-slate-500 font-bold text-xs uppercase tracking-tighter">Resta</span>
+                <span class="font-black text-amber-400" id="t-resta-nuevo">$ 0</span>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-1">
+              <label
+                class="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-widest text-center block">Observaciones
+                Generales</label>
+              <textarea id="pedido_observaciones" placeholder="Ej: Trae hojas propias, entregar urgente..."
+                class="w-full p-4 bg-slate-50 rounded-sm outline-none focus:ring-2 focus:ring-green-100 font-bold border border-slate-100 transition-all text-xs h-20 resize-none"></textarea>
+            </div>
+
+            <button onclick="finalizarPedidoMultiple()" id="btnGuardarPedido"
+              class="w-full mt-4 bg-green-500 text-white py-5 rounded-sm font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:bg-green-600 active:scale-95 transition-all opacity-50 cursor-not-allowed"
+              disabled>
+              Cerrar y Guardar Pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  </div>
+
+  <!-- Contenedor de Toasts -->
+  <div id="toast-container"
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
+  </div>
+
+  <script type="module" src="js/main.js?v=2"></script>
+</body>
+</html>
