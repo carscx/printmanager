@@ -1,3 +1,5 @@
+import type { UserRole } from "../types/auth";
+
 export interface NavItem {
   path: string;
   icon: string;
@@ -18,15 +20,19 @@ const TAIL: NavItem[] = [
 ];
 
 /** Admin: Inicio → dashboard; operador: Inicio → pedidos (sin duplicar Pedidos). */
-export function buildNavItems(isAdmin: boolean): NavItem[] {
+export function buildNavItems(isAdmin: boolean, role: UserRole): NavItem[] {
+  const tail =
+    role === "operador"
+      ? TAIL.filter((i) => i.path !== "/precios")
+      : TAIL;
   if (isAdmin) {
     return [
       { path: "/dashboard", icon: "fa-home", label: "Inicio" },
       { path: "/pedidos", icon: "fa-clipboard-list", label: "Pedidos" },
-      ...TAIL
+      ...tail
     ];
   }
-  return [{ path: "/pedidos", icon: "fa-home", label: "Inicio" }, ...TAIL];
+  return [{ path: "/pedidos", icon: "fa-home", label: "Inicio" }, ...tail];
 }
 
 export function isNavItemActive(path: string, pathname: string): boolean {

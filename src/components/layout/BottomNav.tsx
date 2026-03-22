@@ -2,21 +2,28 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { BottomSheet } from "../ui/BottomSheet";
 import { buildNavItems, isNavItemActive, type NavItem } from "../../config/navItems";
+import type { UserRole } from "../../types/auth";
 
 export type { NavItem };
 
 /** En mobile "Más": todo excepto Pedidos y Nuevo (van fijos en la barra). */
-function buildMobileMore(isAdmin: boolean): NavItem[] {
-  return buildNavItems(isAdmin).filter(
+function buildMobileMore(isAdmin: boolean, role: UserRole): NavItem[] {
+  return buildNavItems(isAdmin, role).filter(
     (i) => i.path !== "/pedidos" && i.path !== "/nuevo-pedido"
   );
 }
 
-export function BottomNav({ isAdmin }: { isAdmin: boolean }) {
+export function BottomNav({
+  isAdmin,
+  role
+}: {
+  isAdmin: boolean;
+  role: UserRole;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const mobileMore = buildMobileMore(isAdmin);
+  const mobileMore = buildMobileMore(isAdmin, role);
 
   const isActive = (path: string) => isNavItemActive(path, location.pathname);
 

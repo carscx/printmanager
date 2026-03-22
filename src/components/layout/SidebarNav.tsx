@@ -2,11 +2,18 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { buildNavItems, isNavItemActive } from "../../config/navItems";
 import { useStockBajo } from "../../hooks/useInsumos";
 import { StockAlertasCriticas } from "../dashboard/StockAlertasCriticas";
+import type { UserRole } from "../../types/auth";
 
-export function SidebarNav({ isAdmin }: { isAdmin: boolean }) {
+export function SidebarNav({
+  isAdmin,
+  role
+}: {
+  isAdmin: boolean;
+  role: UserRole;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const items = buildNavItems(isAdmin);
+  const items = buildNavItems(isAdmin, role);
   const { alertas } = useStockBajo(true);
 
   return (

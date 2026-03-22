@@ -21,6 +21,7 @@ import { PlantillasWhatsappPage } from "./pages/PlantillasWhatsappPage";
 import { useAuth } from "./hooks/useAuth";
 import { OfflineBanner } from "./components/ui/OfflineBanner";
 import ReloadPrompt from "./components/ReloadPrompt";
+import { NonOperadorRoute } from "./components/layout/NonOperadorRoute";
 import type { AuthUser } from "./types/auth";
 
 function AuthenticatedShell({
@@ -35,11 +36,15 @@ function AuthenticatedShell({
   return (
     <div className="bg-slate-50 min-h-screen pb-20 lg:pb-6 font-sans text-slate-900">
       <div className="flex lg:max-w-7xl lg:mx-auto">
-        <SidebarNav isAdmin={user.role === "admin"} />
+        <SidebarNav isAdmin={user.role === "admin"} role={user.role} />
         <div className="flex-1 min-w-0">
           <div className="px-3 pt-3 pb-2 lg:px-8 lg:pt-4">
             <Header
-              onOpenSettings={() => navigate("/precios")}
+              onOpenSettings={
+                user.role === "operador"
+                  ? undefined
+                  : () => navigate("/precios")
+              }
               user={user}
               onLogout={onLogout}
             />
@@ -92,7 +97,9 @@ function AuthenticatedShell({
                 path="/precios"
                 element={
                   <ProtectedRoute user={user}>
-                    <PreciosPage />
+                    <NonOperadorRoute user={user}>
+                      <PreciosPage />
+                    </NonOperadorRoute>
                   </ProtectedRoute>
                 }
               />
@@ -156,7 +163,7 @@ function AuthenticatedShell({
           </main>
         </div>
       </div>
-      <BottomNav isAdmin={user.role === "admin"} />
+      <BottomNav isAdmin={user.role === "admin"} role={user.role} />
       <ToastContainer />
     </div>
   );

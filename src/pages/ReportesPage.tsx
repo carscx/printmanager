@@ -15,7 +15,6 @@ import type { TotalesOperacion } from "../services/reportesApi";
 import { formatCurrency } from "../utils/formatters";
 import { toDateStringAR } from "../utils/dateAr";
 import { showToast } from "../components/ui/Toast";
-import { useAuth } from "../hooks/useAuth";
 import { EvolucionRentabilidadChart } from "../components/reportes/EvolucionRentabilidadChart";
 import { stockHumanoTexto } from "../utils/insumoStockHuman";
 import type { Pedido, PedidoItem } from "../types/pedido";
@@ -36,7 +35,6 @@ function endOfDay(d: Date) {
 }
 
 const ReportesPage = () => {
-  const { isAdmin } = useAuth();
   const [tab, setTab] = useState<Tab>("rentabilidad");
   const [preset, setPreset] = useState<Preset>("mes");
   const [fromCustom, setFromCustom] = useState("");
@@ -136,7 +134,6 @@ const ReportesPage = () => {
   }, [rango.from, rango.to, incluirCancelados]);
 
   const loadRentabilidad = useCallback(async () => {
-    if (!isAdmin) return;
     setLoadingRent(true);
     try {
       const [pedidos, insumosList, bajo, subidas] = await Promise.all([
@@ -169,19 +166,15 @@ const ReportesPage = () => {
     } finally {
       setLoadingRent(false);
     }
-  }, [rango.from, rango.to, isAdmin]);
+  }, [rango.from, rango.to]);
 
   useEffect(() => {
     loadDescuentos();
   }, [loadDescuentos]);
 
   useEffect(() => {
-    if (isAdmin && tab === "rentabilidad") loadRentabilidad();
-  }, [loadRentabilidad, isAdmin, tab]);
-
-  useEffect(() => {
-    if (!isAdmin && tab === "rentabilidad") setTab("descuentos");
-  }, [isAdmin, tab]);
+    if (tab === "rentabilidad") loadRentabilidad();
+  }, [loadRentabilidad, tab]);
 
   const a = agregado;
   const totalDesc = (a?.descuentoItems ?? 0) + (a?.descuentoGlobal ?? 0);
@@ -209,19 +202,17 @@ const ReportesPage = () => {
       </header>
 
       <div className="flex gap-2 p-1 bg-white rounded-sm border border-slate-100 shadow-sm">
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => setTab("rentabilidad")}
-            className={`flex-1 py-3 rounded-sm text-[10px] font-black uppercase tracking-wider ${
-              tab === "rentabilidad"
-                ? "bg-slate-900 text-white"
-                : "text-slate-500"
-            }`}
-          >
-            Rentabilidad
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setTab("rentabilidad")}
+          className={`flex-1 py-3 rounded-sm text-[10px] font-black uppercase tracking-wider ${
+            tab === "rentabilidad"
+              ? "bg-slate-900 text-white"
+              : "text-slate-500"
+          }`}
+        >
+          Rentabilidad
+        </button>
         <button
           type="button"
           onClick={() => setTab("descuentos")}
