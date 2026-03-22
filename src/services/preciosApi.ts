@@ -7,14 +7,13 @@ import type {
 } from "../types/precio";
 import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
 
-/** PostgREST puede tener caché vieja tras ALTER; reintenta sin `nombre`. */
-function esErrorSchemaCacheNombre(err: unknown): boolean {
-  const e = err as { code?: string; message?: string };
-  return (
-    e?.code === "PGRST204" ||
-    (typeof e?.message === "string" && e.message.includes("nombre"))
-  );
-}
+/**
+ * Columnas que PostgREST suele tener en caché desde el esquema original.
+ * No incluimos `nombre` (31): si la caché de la API no se actualizó, `select=*`
+ * o INSERT con `nombre` devuelve 400/PGRST204. El default en BD aplica para `nombre`.
+ */
+const PRECIOS_IMPRESION_SELECT =
+  "id,tipo,doble_faz,precio_venta,activo,updated_at,updated_by,costo_insumo_directo" as const;
 
 export const preciosApi = {
   // ── CONFIGURACIÓN DE NEGOCIO (Épica 1, single row) ───────────────────────
@@ -84,7 +83,11 @@ export const preciosApi = {
   async fetchPreciosImpresion(
     soloActivos = true
   ): Promise<PrecioImpresion[]> {
-    let q = sb.from("precios_impresion").select("*").order("tipo").order("doble_faz");
+    let q = sb
+      .from("precios_impresion")
+      .select(PRECIOS_IMPRESION_SELECT)
+      .order("tipo")
+      .order("doble_faz");
     if (soloActivos) q = q.eq("activo", true);
     const { data, error } = await q;
     if (error) throw error;
@@ -109,7 +112,6 @@ export const preciosApi = {
     tipo: PrecioImpresion["tipo"];
     doble_faz: boolean;
     precio_venta: number;
-    nombre?: string | null;
     activo?: boolean;
   }): Promise<PrecioImpresion> {
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
@@ -124,53 +126,36 @@ export const preciosApi = {
     if (conflict?.id && activo) {
       activo = false;
     }
-    const payloadFull = {
+    const payload = {
       tipo: input.tipo,
       doble_faz: input.doble_faz,
       precio_venta: input.precio_venta,
-      nombre: (input.nombre ?? "").trim(),
       activo,
       updated_by: uid
     };
-    let res = await sb.from("precios_impresion").insert(payloadFull).select().single();
-    if (res.error && esErrorSchemaCacheNombre(res.error)) {
-      const { nombre: _n, ...sinNombre } = payloadFull;
-      res = await sb
-        .from("precios_impresion")
-        .insert(sinNombre)
-        .select()
-        .single();
-    }
+    const res = await sb
+      .from("precios_impresion")
+      .insert(payload)
+      .select(PRECIOS_IMPRESION_SELECT)
+      .single();
     if (res.error) throw res.error;
     return res.data as PrecioImpresion;
   },
 
   async actualizarPrecioImpresionCompleto(
     id: string,
-    patch: Partial<
-      Pick<PrecioImpresion, "nombre" | "precio_venta" | "activo">
-    >
+    patch: Partial<Pick<PrecioImpresion, "precio_venta" | "activo">>
   ): Promise<void> {
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
     const row: Record<string, unknown> = { updated_by: uid };
-    if (patch.nombre !== undefined)
-      row.nombre = (patch.nombre ?? "").trim();
     if (patch.precio_venta !== undefined)
       row.precio_venta = patch.precio_venta;
     if (patch.activo !== undefined) row.activo = patch.activo;
-    let upd = await sb
+    const upd = await sb
       .from("precios_impresion")
       .update(row)
       .eq("id", id)
       .select("id");
-    if (upd.error && esErrorSchemaCacheNombre(upd.error) && "nombre" in row) {
-      const { nombre: _n, ...sinNombre } = row;
-      upd = await sb
-        .from("precios_impresion")
-        .update(sinNombre)
-        .eq("id", id)
-        .select("id");
-    }
     if (upd.error) throw upd.error;
     const data = upd.data;
     if (!data?.length) {

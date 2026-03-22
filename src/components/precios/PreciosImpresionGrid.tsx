@@ -54,13 +54,11 @@ export function PreciosImpresionGrid({
   const [draftNuevo, setDraftNuevo] = useState({
     tipo: "bn" as TipoImpresion,
     doble_faz: false,
-    nombre: "",
     precio: ""
   });
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draftEdit, setDraftEdit] = useState({
-    nombre: "",
     precio: ""
   });
 
@@ -73,7 +71,7 @@ export function PreciosImpresionGrid({
     return [...precios].sort((a, b) => {
       if (a.tipo !== b.tipo) return a.tipo.localeCompare(b.tipo);
       if (a.doble_faz !== b.doble_faz) return a.doble_faz ? 1 : -1;
-      return (a.nombre ?? "").localeCompare(b.nombre ?? "", "es");
+      return a.id.localeCompare(b.id);
     });
   }, [precios]);
 
@@ -133,7 +131,6 @@ export function PreciosImpresionGrid({
   const iniciarEdicionCompleta = (p: PrecioImpresion) => {
     setEditandoId(p.id);
     setDraftEdit({
-      nombre: (p.nombre ?? "").trim(),
       precio: String(p.precio_venta)
     });
   };
@@ -150,7 +147,6 @@ export function PreciosImpresionGrid({
     setSaving(true);
     try {
       await preciosApi.actualizarPrecioImpresionCompleto(id, {
-        nombre: draftEdit.nombre,
         precio_venta: precio
       });
       if (ganancia < 0) {
@@ -187,7 +183,6 @@ export function PreciosImpresionGrid({
       const row = await preciosApi.crearPrecioImpresion({
         tipo: draftNuevo.tipo,
         doble_faz: draftNuevo.doble_faz,
-        nombre: draftNuevo.nombre.trim() || undefined,
         precio_venta: precio,
         activo: true
       });
@@ -202,7 +197,6 @@ export function PreciosImpresionGrid({
       setDraftNuevo({
         tipo: "bn",
         doble_faz: false,
-        nombre: "",
         precio: ""
       });
       setCrearAbierto(false);
@@ -252,9 +246,9 @@ export function PreciosImpresionGrid({
           </h3>
           <p className="text-[10px] text-slate-400 font-semibold mt-2 max-w-lg leading-snug">
             Cada fila es una tarifa por <strong>tipo</strong> (B&amp;N / color) y{" "}
-            <strong>cara</strong> (simple / doble). Podés sumar varias con
-            nombre distinto; solo una puede estar <strong>activa</strong> por
-            combinación (la usa el cotizador). El costo variable viene de{" "}
+            <strong>cara</strong> (simple / doble). Podés sumar varias filas;
+            solo una puede estar <strong>activa</strong> por combinación (la usa
+            el cotizador). El costo variable viene de{" "}
             <strong>Reglas de negocio</strong>.
           </p>
         </div>
@@ -321,20 +315,6 @@ export function PreciosImpresionGrid({
                 Doble faz
               </span>
             </label>
-            <div className="flex-1 min-w-[140px]">
-              <label className="text-[9px] font-black text-slate-400 uppercase">
-                Nombre (opcional)
-              </label>
-              <input
-                type="text"
-                value={draftNuevo.nombre}
-                onChange={(e) =>
-                  setDraftNuevo((d) => ({ ...d, nombre: e.target.value }))
-                }
-                placeholder="Ej. Estándar"
-                className="mt-1 w-full p-2.5 rounded-sm border border-amber-200 font-bold text-sm"
-              />
-            </div>
             <div>
               <label className="text-[9px] font-black text-slate-400 uppercase">
                 Precio venta / hoja
@@ -395,22 +375,6 @@ export function PreciosImpresionGrid({
               {editando ? (
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-3 items-end">
-                    <div>
-                      <label className="text-[9px] font-black text-slate-400 uppercase">
-                        Nombre
-                      </label>
-                      <input
-                        type="text"
-                        value={draftEdit.nombre}
-                        onChange={(e) =>
-                          setDraftEdit((d) => ({
-                            ...d,
-                            nombre: e.target.value
-                          }))
-                        }
-                        className="mt-1 w-full sm:w-48 p-2 rounded-sm border border-blue-200 font-bold text-sm"
-                      />
-                    </div>
                     <div>
                       <label className="text-[9px] font-black text-slate-400 uppercase">
                         Precio / hoja
