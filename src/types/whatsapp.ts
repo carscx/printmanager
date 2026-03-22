@@ -50,6 +50,7 @@ export const VARIABLES_PLANTILLA = [
   "{{alias_pago}}",
   "{{cbu}}",
   "{{titular_pago}}",
+  "{{banco}}",
   "{{observaciones}}"
 ];
 

@@ -28,6 +28,30 @@ function valueFromConfig(datosPago: ConfigCosto[], key: string): string {
   return datosPago.find((c) => c.key === key)?.value ?? "";
 }
 
+/** El cuerpo ya incluye variables de pago; no duplicar bloque automático. */
+function cuerpoUsaPlaceholdersPago(cuerpo: string): boolean {
+  return (
+    /\{\{\s*alias_pago\s*\}\}/.test(cuerpo) ||
+    /\{\{\s*cbu\s*\}\}/.test(cuerpo) ||
+    /\{\{\s*titular_pago\s*\}\}/.test(cuerpo) ||
+    /\{\{\s*banco\s*\}\}/.test(cuerpo)
+  );
+}
+
+function buildBloqueDatosPago(datosPago: ConfigCosto[]): string {
+  const alias = valueFromConfig(datosPago, "pago_alias").trim();
+  const cbu = valueFromConfig(datosPago, "pago_cbu").trim();
+  const tit = valueFromConfig(datosPago, "pago_titular").trim();
+  const banco = valueFromConfig(datosPago, "pago_banco").trim();
+  const lines: string[] = [];
+  if (alias) lines.push(`Alias: ${alias}`);
+  if (cbu) lines.push(`CBU: ${cbu}`);
+  if (tit) lines.push(`Titular: ${tit}`);
+  if (banco) lines.push(`Banco: ${banco}`);
+  if (lines.length === 0) return "";
+  return `*Datos de pago*\n${lines.join("\n")}`;
+}
+
 export function renderWhatsappMensaje(ctx: RenderContext): string {
   const { pedido, items, plantilla, datosPago } = ctx;
 
@@ -46,6 +70,7 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
     "{{alias_pago}}": valueFromConfig(datosPago, "pago_alias"),
     "{{cbu}}": valueFromConfig(datosPago, "pago_cbu"),
     "{{titular_pago}}": valueFromConfig(datosPago, "pago_titular"),
+    "{{banco}}": valueFromConfig(datosPago, "pago_banco"),
     "{{observaciones}}": pedido.observaciones || ""
   };
 
@@ -56,6 +81,13 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
 
   // Convertir secuencias literales "\n" en saltos de línea reales
   cuerpo = cuerpo.replace(/\\n/g, "\n");
+
+  if (plantilla.incluir_datos_pago) {
+    const bloque = buildBloqueDatosPago(datosPago);
+    if (bloque && !cuerpoUsaPlaceholdersPago(plantilla.cuerpo)) {
+      cuerpo = `${cuerpo.trimEnd()}\n\n${bloque}`;
+    }
+  }
 
   return cuerpo;
 }

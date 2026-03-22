@@ -3,7 +3,17 @@ import type {
   PlantillaWhatsapp,
   PlantillaWhatsappInput
 } from "../types/whatsapp";
-import type { ConfigCosto } from "../types/precio";
+import {
+  CONFIG_COSTO_DESCRIPCIONES,
+  type ConfigCosto
+} from "../types/precio";
+
+const PAGO_CONFIG_KEYS = [
+  "pago_alias",
+  "pago_cbu",
+  "pago_titular",
+  "pago_banco"
+] as const;
 
 async function getCurrentUserId(): Promise<string | null> {
   const { data } = await sb.auth.getUser();
@@ -98,11 +108,22 @@ export const whatsappApi = {
     const { data, error } = await sb
       .from("config_costos")
       .select("*")
-      .like("key", "pago_%")
-      .order("key");
+      .in("key", [...PAGO_CONFIG_KEYS]);
 
     if (error) throw error;
-    return (data ?? []) as ConfigCosto[];
+    const fetched = (data ?? []) as ConfigCosto[];
+    const byKey = new Map(fetched.map((c) => [c.key, c]));
+    return PAGO_CONFIG_KEYS.map((key) => {
+      const existing = byKey.get(key);
+      if (existing) return existing;
+      return {
+        key,
+        value: "",
+        descripcion: CONFIG_COSTO_DESCRIPCIONES[key] ?? null,
+        updated_at: "",
+        updated_by: null
+      };
+    });
   },
 
   /**
