@@ -1,8 +1,11 @@
+import type { MouseEvent } from "react";
 import type { Pedido, EstadoPedido } from "../../types/pedido";
 import { PedidoEstadoSwitcher } from "./PedidoEstadoSwitcher";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDateFromInput } from "../../utils/formatters";
 import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
+import { copyTextToClipboard } from "../../utils/clipboard";
+import { showToast } from "../ui/Toast";
 
 interface PedidoCardProps {
   pedido: Pedido;
@@ -45,6 +48,22 @@ export function PedidoCard({
     cancelado: "Cancelado"
   };
 
+  const nombreCliente = (p.cliente ?? "").trim() || "Sin nombre";
+  const textoCopiarPedido =
+    p.numero_publico != null
+      ? `${nombreCliente} #${p.numero_publico}`
+      : nombreCliente;
+
+  const handleCopiarNumero = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const ok = await copyTextToClipboard(textoCopiarPedido);
+    if (ok) {
+      showToast("COPIADO AL PORTAPAPELES");
+    } else {
+      showToast("NO SE PUDO COPIAR", "error");
+    }
+  };
+
   return (
     <div
       className={`bg-white rounded-sm shadow-sm border border-gray-100 border-l-[10px] ${currentBorder} p-5 mb-4 transition-all hover:shadow-md animate-slide-in-right min-w-0 overflow-hidden`}
@@ -81,8 +100,25 @@ export function PedidoCard({
 
         <div className="flex gap-1.5 shrink-0 p-1 rounded-sm bg-slate-100/80 border border-slate-200">
           <button
+            onClick={handleCopiarNumero}
+            className="p-2.5 rounded-sm border-2 border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800 active:scale-95 transition-all touch-manipulation"
+            title={
+              p.numero_publico != null
+                ? "Copiar cliente y número de pedido"
+                : "Copiar nombre del cliente"
+            }
+            type="button"
+            aria-label={
+              p.numero_publico != null
+                ? `Copiar ${nombreCliente} número ${p.numero_publico}`
+                : `Copiar nombre del cliente ${nombreCliente}`
+            }
+          >
+            <i className="fas fa-copy text-lg" />
+          </button>
+          <button
             onClick={() => onEditar(p)}
-            className="p-2.5 rounded-sm border-2 border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:scale-95 transition-all"
+            className="p-2.5 rounded-sm border-2 border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:scale-95 transition-all touch-manipulation"
             title="Editar pedido"
             type="button"
             aria-label="Editar pedido"
