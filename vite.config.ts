@@ -8,6 +8,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "prompt",
+      /**
+       * Vite 8 usa Rolldown: el plugin no puede inyectar `bundle[manifestFilename]` y el archivo no se genera.
+       * El manifest real está en `public/manifest.webmanifest` (debe coincidir con `manifest` + defaults del plugin).
+       */
+      manifestFilename: "manifest.webmanifest",
       includeAssets: ["favicon.svg", "web-app-manifest-512x512.png"],
       manifest: {
         name: "PrintManager",
@@ -35,18 +40,11 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2}"],
+        globPatterns: [
+          "**/*.{js,css,html,ico,svg,png,woff2,webmanifest}"
+        ],
         navigateFallback: "index.html",
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "font-awesome-cdn",
-              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 }
-            }
-          }
-        ]
+        runtimeCaching: []
       },
       devOptions: { enabled: false }
     })

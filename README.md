@@ -77,6 +77,18 @@ Eso crea `node_modules/` y genera o actualiza **`package-lock.json`**.
 - **`registerType: "prompt"`** en `vite.config.ts`: el usuario confirma la actualización vía `ReloadPrompt` en la UI.
 - **Iconos del manifest**: colocá **`public/web-app-manifest-512x512.png`** (512×512, PNG). Vite lo publica como `/web-app-manifest-512x512.png` y está referenciado en el manifest y en `apple-touch-icon` en `index.html`.
 - **Docker / Nginx**: `Dockerfile` en la raíz sirve el `dist` con `docker/nginx-spa.conf`, que envía **`Cache-Control: no-store`** para `sw.js` y los JS de Workbox. Si usás Nginx sin Docker, replicá esas directivas `location` en tu `server` (o incluí el fragmento de `docker/nginx-spa.conf`).
+- **Iconos Font Awesome**: se cargan desde el paquete npm `@fortawesome/fontawesome-free` (en `main.tsx`), no desde CDN, para evitar avisos de *Tracking Prevention* en Edge y depender menos de terceros.
+
+### Producción: errores típicos en consola
+
+1. **`manifest.webmanifest` 404 y `bad-precaching-response` (Workbox)**  
+   Tras `npm run build`, comprobá que en **`dist/`** exista **`manifest.webmanifest`**. Con **Vite 8 (Rolldown)**, `vite-plugin-pwa` no puede emitir ese archivo al bundle (la asignación al `bundle` se ignora); en este repo el contenido viene de **`public/manifest.webmanifest`**, copiado a `dist/`. Si cambiás el objeto `manifest` en `vite.config.ts`, actualizá también `public/manifest.webmanifest` (mismo JSON que generaría el plugin, incluyendo merges por defecto como `lang`), o el precache del SW puede fallar por hash distinto. Subí **todo** el contenido de `dist/` al hosting. El fragmento Nginx incluye `location = /manifest.webmanifest` con tipo `application/manifest+json`.
+
+2. **Logs `background.js`, Bitwarden, SignalR, WASM**  
+   No vienen de PrintManager: son de la **extensión del navegador** (p. ej. Bitwarden). Probá en ventana de incógnito **sin extensiones** o ignorá esas líneas.
+
+3. **Supabase `403` / `permission denied for table pedidos`**  
+   Es **RLS/políticas** en Supabase (el JWT no tiene permiso sobre `pedidos`). Revisá políticas y roles en el SQL del proyecto (`sql/`, p. ej. `02_auth_rls.sql`) y en el panel de Supabase.
 
 ---
 
