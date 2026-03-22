@@ -40,10 +40,16 @@ export function ConfigCostosPanel({ configCostos, onReload }: Props) {
 
   return (
     <div className="bg-white rounded-sm shadow-sm border border-slate-100 overflow-hidden">
-      <div className="p-4">
+      <div className="p-4 space-y-1">
         <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.2em] italic leading-none">
           Configuración de Costos
         </h3>
+        <p className="text-[10px] text-slate-400 leading-snug">
+          Alias, CBU y titular se usan en plantillas WhatsApp:{" "}
+          <code className="text-slate-500">{"{{alias_pago}}"}</code>,{" "}
+          <code className="text-slate-500">{"{{cbu}}"}</code>,{" "}
+          <code className="text-slate-500">{"{{titular_pago}}"}</code>.
+        </p>
       </div>
 
       <div className="divide-y divide-slate-50">

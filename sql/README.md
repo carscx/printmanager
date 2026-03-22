@@ -6,7 +6,7 @@ Scripts en esta carpeta (`sql/` en la raíz del repo). En Supabase: **SQL Editor
 
 ## Orden de ejecución (una sola lista)
 
-Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`32`**.  
+Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`33`**.  
 **No hay `24` en la raíz**: el antiguo migrador de tinta ml → carillas está en **`archive/`** y solo aplica a bases legacy.
 
 ### Instalación desde cero (esquema + lógica; sin datos demo)
@@ -45,6 +45,7 @@ Ejecutá **en este orden**:
 | 28 | `30_grants_authenticated_public.sql` |
 | 29 | `31_precios_impresion_tarifas_abm.sql` |
 | 30 | `32_postgrest_reload_schema.sql` |
+| 31 | `33_plantillas_whatsapp_seed_08_prod.sql` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -104,6 +105,7 @@ Ver **`archive/README.md`**. Incluye el migrador legacy de stock de tinta en ml 
 
 ## Notas para producción
 
+- **Solo plantillas WhatsApp** (mismas que el seed `08`, sin pedidos ni insumos demo): ejecutá **`33_plantillas_whatsapp_seed_08_prod.sql`** en PROD. **Pisa** todas las filas de `plantillas_whatsapp`; hacé backup si tenías textos propios.
 - Si la API devuelve **403** / `permission denied for table …` (**42501**) con usuario logueado, suele faltar **GRANT** al rol `authenticated` (RLS no alcanza). Ejecutá **`30_grants_authenticated_public.sql`** en el mismo proyecto Supabase.
 - Preferí un **proyecto Supabase limpio** y ejecutar la tabla de instalación de arriba **una vez**, sin el `08` o con un seed mínimo propio.
 - Para **Supabase CLI / migraciones versionadas**, podés copiar estos archivos como migraciones en el mismo orden (sin `archive/`).

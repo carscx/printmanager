@@ -75,6 +75,50 @@ export const CONFIG_COSTO_LABELS: Record<string, string> = {
   pago_banco: "Banco"
 };
 
+/** Orden fijo en la pestaña Pagos / resumen; alinea con seed `08_seed_datos_prueba`. */
+export const CONFIG_COSTO_ORDER: readonly string[] = [
+  "markup_general",
+  "comision_sobrina",
+  "pago_alias",
+  "pago_cbu",
+  "pago_titular",
+  "pago_banco"
+] as const;
+
+/** Descripciones por defecto al insertar filas que aún no existen en BD. */
+export const CONFIG_COSTO_DESCRIPCIONES: Record<string, string> = {
+  markup_general: "Divisor ganancia bruta",
+  comision_sobrina: "% comisión Avru",
+  pago_alias: "Alias Mercado Pago",
+  pago_cbu: "CBU",
+  pago_titular: "Titular cuenta",
+  pago_banco: "Banco"
+};
+
+/**
+ * Asegura que aparezcan todas las claves conocidas (p. ej. pago_* para WhatsApp)
+ * aunque en `config_costos` solo existan markup/comisión.
+ */
+export function mergeConfigCostosRows(fetched: ConfigCosto[]): ConfigCosto[] {
+  const byKey = new Map(fetched.map((c) => [c.key, c]));
+  const orderSet = new Set<string>(CONFIG_COSTO_ORDER);
+  const ordered: ConfigCosto[] = CONFIG_COSTO_ORDER.map((key) => {
+    const existing = byKey.get(key);
+    if (existing) return existing;
+    return {
+      key,
+      value: "",
+      descripcion: CONFIG_COSTO_DESCRIPCIONES[key] ?? null,
+      updated_at: "",
+      updated_by: null
+    };
+  });
+  const extras = fetched
+    .filter((c) => !orderSet.has(c.key))
+    .sort((a, b) => a.key.localeCompare(b.key));
+  return [...ordered, ...extras];
+}
+
 // ── Consumo congelado por item ──────────────────────────────────────────────
 
 export interface PedidoItemInsumo {

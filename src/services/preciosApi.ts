@@ -1,9 +1,11 @@
 import { sb } from "../config/supabase";
-import type {
-  PrecioImpresion,
-  PrecioAnillado,
-  PrecioAnilladoInput,
-  ConfigCosto
+import {
+  CONFIG_COSTO_DESCRIPCIONES,
+  mergeConfigCostosRows,
+  type PrecioImpresion,
+  type PrecioAnillado,
+  type PrecioAnilladoInput,
+  type ConfigCosto
 } from "../types/precio";
 import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
 
@@ -342,14 +344,20 @@ export const preciosApi = {
       .select("*")
       .order("key");
     if (error) throw error;
-    return (data ?? []) as ConfigCosto[];
+    return mergeConfigCostosRows((data ?? []) as ConfigCosto[]);
   },
 
   async actualizarConfigCosto(key: string, value: string): Promise<void> {
-    const { error } = await sb
-      .from("config_costos")
-      .update({ value, updated_by: (await sb.auth.getUser()).data.user?.id })
-      .eq("key", key);
+    const uid = (await sb.auth.getUser()).data.user?.id;
+    const { error } = await sb.from("config_costos").upsert(
+      {
+        key,
+        value,
+        descripcion: CONFIG_COSTO_DESCRIPCIONES[key] ?? null,
+        updated_by: uid
+      },
+      { onConflict: "key" }
+    );
     if (error) throw error;
   }
 };
