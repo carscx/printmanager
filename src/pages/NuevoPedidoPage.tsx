@@ -21,8 +21,7 @@ import {
 } from "../types/precio";
 import {
   comisionPctEfectivo,
-  fetchVendedoresDisponibles,
-  nombreVendedorSocio
+  fetchProfileById
 } from "../services/profilesApi";
 import type { ProfileRow } from "../types/profile";
 import { scrollFieldIntoView } from "../utils/scrollField";
@@ -74,7 +73,9 @@ export function NuevoPedidoPage() {
   const [soloAnillado, setSoloAnillado] = useState(false);
   const [espiralInsumoId, setEspiralInsumoId] = useState<string | null>(null);
   const [itemNotas, setItemNotas] = useState("");
-  const [vendedores, setVendedores] = useState<ProfileRow[]>([]);
+  const [perfilComision, setPerfilComision] = useState<ProfileRow | null>(
+    null
+  );
   const [openEstadoEdicion, setOpenEstadoEdicion] = useState(false);
   /** Índice del ítem cuyo formulario se está editando (reemplazo al guardar línea). */
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
@@ -173,11 +174,27 @@ export function NuevoPedidoPage() {
     soloAnillado
   ]);
 
+  /** Perfil del usuario logueado (nuevo pedido) o del vendedor del pedido (edición). */
   useEffect(() => {
-    fetchVendedoresDisponibles()
-      .then(setVendedores)
-      .catch(() => setVendedores([]));
-  }, []);
+    const id = cart.editandoPedidoId
+      ? cart.vendedorId
+      : user?.id ?? null;
+    if (!id) {
+      setPerfilComision(null);
+      return;
+    }
+    let cancelled = false;
+    fetchProfileById(id)
+      .then((p) => {
+        if (!cancelled) setPerfilComision(p);
+      })
+      .catch(() => {
+        if (!cancelled) setPerfilComision(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cart.editandoPedidoId, cart.vendedorId, user?.id]);
 
   /** Alinea tipo de pago al estado elegido en modo edición (seña / cobro total). */
   useEffect(() => {
@@ -191,27 +208,21 @@ export function NuevoPedidoPage() {
       setTipo("pago_total");
   }, [cart.editandoPedidoId, cart.estadoEdicion]);
 
-  const vendedorIdCart = useCartStore((s) => s.vendedorId);
-  const setVendedorIdStore = useCartStore((s) => s.setVendedorId);
-
-  useEffect(() => {
-    if (vendedores.length === 0) return;
-    if (vendedorIdCart != null) return;
-    const yo = vendedores.find((v) => v.id === user?.id);
-    setVendedorIdStore(yo?.id ?? vendedores[0]?.id ?? null);
-  }, [vendedores, user?.id, vendedorIdCart, setVendedorIdStore]);
-
-  const vendedorSeleccionado = useMemo(
-    () => vendedores.find((v) => v.id === cart.vendedorId),
-    [vendedores, cart.vendedorId]
-  );
-
   const comisionEstimada = useMemo(() => {
     const total = cart.getTotal();
-    const pct = comisionPctEfectivo(vendedorSeleccionado);
-    if (!cart.vendedorId || total <= 0) return 0;
+    const pct = comisionPctEfectivo(perfilComision);
+    const tieneVendedorContexto = cart.editandoPedidoId
+      ? Boolean(cart.vendedorId)
+      : Boolean(user?.id);
+    if (!tieneVendedorContexto || total <= 0) return 0;
     return Math.round(total * (pct / 100) * 100) / 100;
-  }, [cart.items, cart.vendedorId, vendedorSeleccionado]);
+  }, [
+    cart.items,
+    cart.editandoPedidoId,
+    cart.vendedorId,
+    user?.id,
+    perfilComision
+  ]);
 
   const resetFormItemFieldsOnly = () => {
     setPaginas(0);
@@ -468,7 +479,9 @@ export function NuevoPedidoPage() {
       total,
       total_pedido: total,
       observaciones: cart.observaciones.trim(),
-      vendedor_id: cart.vendedorId,
+      vendedor_id: cart.editandoPedidoId
+        ? cart.vendedorId
+        : user?.id ?? null,
       descuento_global_porcentaje,
       descuento_global_monto,
       recargo_global_porcentaje,
@@ -638,28 +651,8 @@ export function NuevoPedidoPage() {
               )}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">
-                Vendedor
-              </label>
-              <select
-                value={cart.vendedorId ?? ""}
-                onChange={(e) =>
-                  cart.setVendedorId(e.target.value || null)
-                }
-                className="w-full p-3.5 lg:p-4 bg-slate-50 rounded-sm outline-none focus:ring-2 focus:ring-blue-100 font-bold border border-slate-50 transition-all cursor-pointer"
-              >
-                {vendedores.length === 0 ? (
-                  <option value="">Cargando…</option>
-                ) : (
-                  vendedores.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {nombreVendedorSocio(v)}
-                    </option>
-                  ))
-                )}
-              </select>
-              {cart.items.length > 0 && cart.vendedorId && (
+            {cart.items.length > 0 &&
+              (cart.editandoPedidoId ? cart.vendedorId : user?.id) && (
                 <p className="text-[10px] text-violet-700 font-bold ml-2">
                   {comisionEstimada > 0 ? (
                     <>
@@ -671,7 +664,6 @@ export function NuevoPedidoPage() {
                   )}
                 </p>
               )}
-            </div>
 
             {/* Pages + Copies + Ink type */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-5">

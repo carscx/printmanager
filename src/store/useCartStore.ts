@@ -172,7 +172,7 @@ export const useCartStore = create<CartState>()(
             ? state.fechaEntrega
             : "",
         observaciones: state.observaciones,
-        vendedorId: state.vendedorId,
+        vendedorId: state.editandoPedidoId ? state.vendedorId : null,
         descRecGlobalTipo: state.descRecGlobalTipo,
         descRecGlobalModo: state.descRecGlobalModo,
         descRecGlobalValor: state.descRecGlobalValor
@@ -186,6 +186,7 @@ export const useCartStore = create<CartState>()(
           merged.clienteNombre = "";
           merged.fechaEntrega = "";
         }
+        if (!merged.editandoPedidoId) merged.vendedorId = null;
         return merged;
       }
     }

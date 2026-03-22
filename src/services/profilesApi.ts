@@ -37,3 +37,16 @@ export async function fetchVendedoresDisponibles(): Promise<ProfileRow[]> {
   if (error) throw error;
   return (data ?? []) as ProfileRow[];
 }
+
+/** Un perfil por id (p. ej. usuario logueado o vendedor del pedido en edición). */
+export async function fetchProfileById(
+  id: string
+): Promise<ProfileRow | null> {
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id, role, full_name, comision_pct")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ProfileRow) ?? null;
+}
