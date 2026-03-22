@@ -178,6 +178,10 @@ export function PedidoCard({
                 Listo para retirar
               </span>
             </span>
+          ) : estadoRaw === "presupuesto" ? (
+            "Enviar presupuesto al cliente"
+          ) : estadoRaw === "pendiente" ? (
+            "Avisar al cliente"
           ) : (
             "WHATSAPP"
           )}

@@ -528,7 +528,12 @@ export function NuevoPedidoPage() {
     try {
       if (cart.editandoPedidoId) {
         await actualizar(cart.editandoPedidoId, cabecera, items);
-        showToast(esPresupuesto ? "PRESUPUESTO ACTUALIZADO" : "PEDIDO ACTUALIZADO");
+        const guardadoComoPresupuesto = String(cabecera.estado) === "presupuesto";
+        showToast(
+          guardadoComoPresupuesto
+            ? "PRESUPUESTO ACTUALIZADO"
+            : "PEDIDO ACTUALIZADO"
+        );
       } else {
         const creados = (await crear(cabecera, items)) as Pedido[] | undefined;
         const num = creados?.[0]?.numero_publico;

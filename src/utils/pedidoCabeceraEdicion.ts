@@ -17,6 +17,20 @@ export function cabeceraDesdeEstadoEdicion(
   const { senaFromCart, tipoPago, totalPedido, snap } = opts;
 
   if (est === "presupuesto") {
+    // Agregar seña en edición = confirmar pedido (presupuesto → pendiente), no presupuesto con seña forzada a 0.
+    if (senaFromCart > 0) {
+      return {
+        ...base,
+        modalidad: "pedido",
+        estado: "pendiente",
+        sena: senaFromCart,
+        tipo_pago: tipoPago,
+        entregado: false,
+        fecha_pago: null,
+        fecha_vencimiento: null,
+        stock_descontado: snap.stock_descontado
+      };
+    }
     return {
       ...base,
       modalidad: "presupuesto",
