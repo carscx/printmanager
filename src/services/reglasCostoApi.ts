@@ -32,6 +32,18 @@ export const reglasCostoApi = {
     return (data ?? []) as ReglaCosto[];
   },
 
+  /** Todas las líneas de `reglas_costo` vinculadas a tarifas de impresión (costeo en grid). */
+  async fetchTodasImpresion(): Promise<ReglaCosto[]> {
+    const { data, error } = await sb
+      .from("reglas_costo")
+      .select("*")
+      .not("precio_impresion_id", "is", null)
+      .is("precio_anillado_id", null)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as ReglaCosto[];
+  },
+
   /** @deprecated usar fetchByTarifa */
   async fetchByPrecioImpresion(
     precioImpresionId: string

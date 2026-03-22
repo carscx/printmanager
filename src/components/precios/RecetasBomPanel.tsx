@@ -6,7 +6,7 @@ import type { Insumo } from "../../types/insumo";
 import type { PrecioImpresion } from "../../types/precio";
 import type { RecetaItem, ModoConsumo, AlcanceReceta } from "../../types/receta";
 import { ALCANCE_RECETA, MODO_CONSUMO } from "../../types/receta";
-import { labelPrecioImpresion } from "../../types/precio";
+import { labelPrecioImpresionTarifa } from "../../types/precio";
 import { formatCurrency } from "../../utils/formatters";
 import { fnCostoTotalRealInsumos } from "../../services/bomPreview";
 import {
@@ -211,7 +211,7 @@ export function RecetasBomPanel({
                 <option value="">—</option>
                 {preciosImpresion.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {labelPrecioImpresion(p.tipo, p.doble_faz)}
+                    {labelPrecioImpresionTarifa(p)}
                   </option>
                 ))}
               </select>
@@ -289,7 +289,7 @@ export function RecetasBomPanel({
               <div className="flex justify-between items-start gap-2">
                 <div>
                   <p className="text-sm font-black text-slate-800">
-                    {labelPrecioImpresion(p.tipo, p.doble_faz)}
+                    {labelPrecioImpresionTarifa(p)}
                   </p>
                   <p className="text-[10px] text-slate-400">
                     Público {formatCurrency(p.precio_venta)} / hoja

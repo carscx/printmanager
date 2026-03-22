@@ -72,13 +72,12 @@ export const preciosApi = {
 
   // ── PRECIOS IMPRESIÓN ───────────────────────────────────────────────────
 
-  async fetchPreciosImpresion(): Promise<PrecioImpresion[]> {
-    const { data, error } = await sb
-      .from("precios_impresion")
-      .select("*")
-      .eq("activo", true)
-      .order("tipo")
-      .order("doble_faz");
+  async fetchPreciosImpresion(
+    soloActivos = true
+  ): Promise<PrecioImpresion[]> {
+    let q = sb.from("precios_impresion").select("*").order("tipo").order("doble_faz");
+    if (soloActivos) q = q.eq("activo", true);
+    const { data, error } = await q;
     if (error) throw error;
     return (data ?? []) as PrecioImpresion[];
   },
@@ -97,8 +96,108 @@ export const preciosApi = {
     if (error) throw error;
   },
 
+  async crearPrecioImpresion(input: {
+    tipo: PrecioImpresion["tipo"];
+    doble_faz: boolean;
+    precio_venta: number;
+    nombre?: string | null;
+    activo?: boolean;
+  }): Promise<PrecioImpresion> {
+    const uid = (await sb.auth.getUser()).data.user?.id ?? null;
+    const { data: conflict } = await sb
+      .from("precios_impresion")
+      .select("id")
+      .eq("tipo", input.tipo)
+      .eq("doble_faz", input.doble_faz)
+      .eq("activo", true)
+      .maybeSingle();
+    let activo = input.activo !== false;
+    if (conflict?.id && activo) {
+      activo = false;
+    }
+    const { data, error } = await sb
+      .from("precios_impresion")
+      .insert({
+        tipo: input.tipo,
+        doble_faz: input.doble_faz,
+        precio_venta: input.precio_venta,
+        nombre: (input.nombre ?? "").trim(),
+        activo,
+        updated_by: uid
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as PrecioImpresion;
+  },
+
+  async actualizarPrecioImpresionCompleto(
+    id: string,
+    patch: Partial<
+      Pick<PrecioImpresion, "nombre" | "precio_venta" | "activo">
+    >
+  ): Promise<void> {
+    const uid = (await sb.auth.getUser()).data.user?.id ?? null;
+    const row: Record<string, unknown> = { updated_by: uid };
+    if (patch.nombre !== undefined)
+      row.nombre = (patch.nombre ?? "").trim();
+    if (patch.precio_venta !== undefined)
+      row.precio_venta = patch.precio_venta;
+    if (patch.activo !== undefined) row.activo = patch.activo;
+    const { data, error } = await sb
+      .from("precios_impresion")
+      .update(row)
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data?.length) {
+      throw new Error(
+        "No se guardó la tarifa (sin filas actualizadas). ¿Rol admin?"
+      );
+    }
+  },
+
+  async eliminarPrecioImpresion(id: string): Promise<void> {
+    const { error } = await sb.from("precios_impresion").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  async toggleImpresionActivo(id: string, activo: boolean): Promise<void> {
+    if (activo) {
+      const { data: row, error: e1 } = await sb
+        .from("precios_impresion")
+        .select("tipo, doble_faz")
+        .eq("id", id)
+        .single();
+      if (e1) throw e1;
+      if (row) {
+        const { data: other } = await sb
+          .from("precios_impresion")
+          .select("id")
+          .eq("tipo", row.tipo)
+          .eq("doble_faz", row.doble_faz)
+          .eq("activo", true)
+          .neq("id", id)
+          .maybeSingle();
+        if (other) {
+          throw new Error(
+            "Ya hay otra tarifa activa para esta combinación. Desactivala primero."
+          );
+        }
+      }
+    }
+    const { error } = await sb
+      .from("precios_impresion")
+      .update({
+        activo,
+        updated_by: (await sb.auth.getUser()).data.user?.id
+      })
+      .eq("id", id);
+    if (error) throw error;
+  },
+
   async ajustarPreciosImpresionPorcentaje(porcentaje: number): Promise<void> {
-    const precios = await this.fetchPreciosImpresion();
+    const precios = await this.fetchPreciosImpresion(true);
     const factor = 1 + porcentaje / 100;
     for (const p of precios) {
       await this.actualizarPrecioImpresion(

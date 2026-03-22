@@ -6,7 +6,7 @@ Scripts en esta carpeta (`sql/` en la raíz del repo). En Supabase: **SQL Editor
 
 ## Orden de ejecución (una sola lista)
 
-Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`29`**.  
+Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`31`**.  
 **No hay `24` en la raíz**: el antiguo migrador de tinta ml → carillas está en **`archive/`** y solo aplica a bases legacy.
 
 ### Instalación desde cero (esquema + lógica; sin datos demo)
@@ -42,6 +42,8 @@ Ejecutá **en este orden**:
 | 25 | `27_epic5_borrar_insumos_impresion_maestros_tinta_ml.sql` |
 | 26 | `28_pedidos_maquina_estados_unificada.sql` |
 | 27 | `29_plantillas_whatsapp_estados.sql` |
+| 28 | `30_grants_authenticated_public.sql` |
+| 29 | `31_precios_impresion_tarifas_abm.sql` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -53,6 +55,8 @@ Si el `08` ya corrió pero **faltan** migraciones posteriores al esquema que ten
 
 1. **`28_pedidos_maquina_estados_unificada.sql`** — estados unificados (presupuesto → pendiente → listo → …), stock al pasar a pendiente, RPC y vistas.
 2. **`29_plantillas_whatsapp_estados.sql`** — alinea `plantillas_whatsapp.estado_destino` (p. ej. `señado` → `pendiente`, plantilla `listo`). Idempotente.
+3. **`30_grants_authenticated_public.sql`** — si la API devuelve `permission denied for table` con usuario logueado.
+4. **`31_precios_impresion_tarifas_abm.sql`** — varias tarifas de impresión por combinación tipo/cara (solo una activa); columna `nombre`. Necesaria para el ABM de tarifas en la app.
 
 Orden: **siempre 28 antes que 29**.  
 Si recreás todo desde cero, el `08` moderno ya trae plantillas alineadas; el `29` igual puede ejecutarse (no duplica si ya está actualizado).
@@ -98,6 +102,7 @@ Ver **`archive/README.md`**. Incluye el migrador legacy de stock de tinta en ml 
 
 ## Notas para producción
 
+- Si la API devuelve **403** / `permission denied for table …` (**42501**) con usuario logueado, suele faltar **GRANT** al rol `authenticated` (RLS no alcanza). Ejecutá **`30_grants_authenticated_public.sql`** en el mismo proyecto Supabase.
 - Preferí un **proyecto Supabase limpio** y ejecutar la tabla de instalación de arriba **una vez**, sin el `08` o con un seed mínimo propio.
 - Para **Supabase CLI / migraciones versionadas**, podés copiar estos archivos como migraciones en el mismo orden (sin `archive/`).
 - Vistas SQL antiguas que filtren por estado `señado` pueden quedar desalineadas con el modelo unificado (`28`); revisá reportes si venís de un esquema muy viejo.

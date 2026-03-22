@@ -16,7 +16,8 @@ import { cabeceraDesdeEstadoEdicion } from "../utils/pedidoCabeceraEdicion";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
 import {
   labelAnillado,
-  precioAnilladoParaEspiralInsumo
+  precioAnilladoParaEspiralInsumo,
+  precioImpresionActivoParaTipo
 } from "../types/precio";
 import {
   comisionPctEfectivo,
@@ -339,7 +340,7 @@ export function NuevoPedidoPage() {
     }
     const precioImp = soloAnillado
       ? null
-      : preciosImpresion.find((p) => p.tipo === tipo && p.doble_faz === dobleFaz);
+      : precioImpresionActivoParaTipo(preciosImpresion, tipo, dobleFaz);
     const venta = costEngine.calcularPrecioVenta(
       lineParams,
       preciosImpresion,

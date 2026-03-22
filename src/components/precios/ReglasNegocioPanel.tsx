@@ -4,7 +4,7 @@ import type { TipoTarifaRegla } from "../../services/reglasCostoApi";
 import { showToast } from "../ui/Toast";
 import type { PrecioImpresion, PrecioAnillado } from "../../types/precio";
 import type { Insumo } from "../../types/insumo";
-import { labelPrecioImpresion } from "../../types/precio";
+import { labelPrecioImpresionTarifa } from "../../types/precio";
 import {
   INSUMO_CATEGORIAS,
   INSUMO_CATEGORIA_LABELS,
@@ -333,8 +333,9 @@ export function ReglasNegocioPanel({
             {tipoServicio === "impresion"
               ? preciosImpresion.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {labelPrecioImpresion(p.tipo, p.doble_faz)} · venta{" "}
+                    {labelPrecioImpresionTarifa(p)} · venta{" "}
                     {formatCurrency(p.precio_venta)}
+                    {!p.activo ? " · inactiva" : ""}
                   </option>
                 ))
               : preciosAnillado.map((p) => (

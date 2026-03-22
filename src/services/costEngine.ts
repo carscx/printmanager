@@ -66,7 +66,8 @@ function encontrarPrecioImpresion(
   dobleFaz: boolean
 ): number {
   const precio = precios.find(
-    (p) => p.tipo === tipo && p.doble_faz === dobleFaz
+    (p) =>
+      p.activo !== false && p.tipo === tipo && p.doble_faz === dobleFaz
   );
   return precio?.precio_venta ?? 0;
 }

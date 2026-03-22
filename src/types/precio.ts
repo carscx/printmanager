@@ -12,6 +12,8 @@ export interface PrecioImpresion {
   id: string;
   tipo: TipoImpresion;
   doble_faz: boolean;
+  /** Etiqueta opcional (varias tarifas por tipo/faz; solo una activa). */
+  nombre?: string | null;
   precio_venta: number;
   /** Costo variable insumos/hoja (antes factores); alimenta vistas SQL de margen. */
   costo_insumo_directo?: number | null;
@@ -93,6 +95,27 @@ export function labelPrecioImpresion(
   dobleFaz: boolean
 ): string {
   return `${TIPO_IMPRESION_LABELS[tipo]} ${dobleFaz ? "Doble Faz" : "Simple Faz"}`;
+}
+
+/** Etiqueta en listados (nombre + tipo/faz). */
+export function labelPrecioImpresionTarifa(p: PrecioImpresion): string {
+  const base = labelPrecioImpresion(p.tipo, p.doble_faz);
+  const n = (p.nombre ?? "").trim();
+  return n ? `${n} · ${base}` : base;
+}
+
+/** Tarifa usada en cotización: una activa por (tipo, doble_faz). */
+export function precioImpresionActivoParaTipo(
+  precios: PrecioImpresion[],
+  tipo: TipoImpresion,
+  dobleFaz: boolean
+): PrecioImpresion | undefined {
+  return precios.find(
+    (p) =>
+      p.activo !== false &&
+      p.tipo === tipo &&
+      p.doble_faz === dobleFaz
+  );
 }
 
 export function labelAnillado(

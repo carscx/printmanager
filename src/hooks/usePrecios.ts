@@ -19,7 +19,7 @@ async function aplicarCargasPrecios(
   setConfigCostos: Dispatch<SetStateAction<ConfigCosto[]>>
 ): Promise<void> {
   const results = await Promise.allSettled([
-    preciosApi.fetchPreciosImpresion(),
+    preciosApi.fetchPreciosImpresion(false),
     preciosApi.fetchPreciosAnillado(false),
     preciosApi.fetchConfigCostos()
   ]);
