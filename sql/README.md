@@ -6,7 +6,7 @@ Scripts en esta carpeta (`sql/` en la raíz del repo). En Supabase: **SQL Editor
 
 ## Orden de ejecución (una sola lista)
 
-Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`33`**.  
+Los nombres de archivo ordenan **alfanuméricamente** así: `01` … `05`, luego **`06`–`08`** (WhatsApp + seed), luego **`09`–`23`**, **`25`–`34`**.  
 **No hay `24` en la raíz**: el antiguo migrador de tinta ml → carillas está en **`archive/`** y solo aplica a bases legacy.
 
 ### Instalación desde cero (esquema + lógica; sin datos demo)
@@ -46,6 +46,7 @@ Ejecutá **en este orden**:
 | 29 | `31_precios_impresion_tarifas_abm.sql` |
 | 30 | `32_postgrest_reload_schema.sql` |
 | 31 | `33_plantillas_whatsapp_seed_08_prod.sql` |
+| 32 | `34_plantillas_whatsapp_rls_operador.sql` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 

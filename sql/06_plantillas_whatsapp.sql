@@ -1,5 +1,5 @@
 -- ============================================================================
--- 06 — Plantillas WhatsApp (admin edita; todos leen)
+-- 06 — Plantillas WhatsApp (admin y operador editan; todos leen)
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.plantillas_whatsapp (
@@ -22,5 +22,15 @@ CREATE POLICY "select_plantillas_whatsapp"
   ON public.plantillas_whatsapp FOR SELECT TO authenticated USING (true);
 CREATE POLICY "all_plantillas_whatsapp"
   ON public.plantillas_whatsapp FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role IN ('admin', 'operador')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role IN ('admin', 'operador')
+    )
+  );

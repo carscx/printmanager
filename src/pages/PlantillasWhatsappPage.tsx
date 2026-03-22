@@ -7,8 +7,14 @@ import { showToast } from "../components/ui/Toast";
 import { PlantillaFormSheet } from "../components/whatsapp/PlantillaFormSheet";
 import { useConfirmSheet, ConfirmSheet } from "../components/ui/ConfirmSheet";
 
+/** Admin y operador gestionan plantillas; vendedor solo lectura (sin botones). */
+function puedeGestionarPlantillas(role: string | undefined) {
+  return role === "admin" || role === "operador";
+}
+
 export function PlantillasWhatsappPage() {
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
+  const puedeEditar = puedeGestionarPlantillas(user?.role);
   const [plantillas, setPlantillas] = useState<PlantillaWhatsapp[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -120,7 +126,7 @@ export function PlantillasWhatsappPage() {
             Mensajes predefinidos por estado del pedido
           </p>
         </div>
-        {isAdmin && (
+        {puedeEditar && (
           <button
             type="button"
             onClick={handleCreate}
@@ -140,7 +146,8 @@ export function PlantillasWhatsappPage() {
         <div className="bg-white rounded-sm border border-slate-100 p-8 text-center">
           <i className="fab fa-whatsapp text-4xl text-slate-200 mb-4" />
           <p className="text-slate-500 font-bold">
-            No hay plantillas. {isAdmin && "Creá una para enviar mensajes por estado."}
+            No hay plantillas.{" "}
+            {puedeEditar && "Creá una para enviar mensajes por estado."}
           </p>
         </div>
       ) : (
@@ -151,7 +158,7 @@ export function PlantillasWhatsappPage() {
               className="bg-white rounded-sm border border-slate-100 shadow-sm overflow-hidden"
             >
               <div className="p-4 flex items-start gap-3">
-                {isAdmin && (
+                {puedeEditar && (
                   <div className="flex flex-col gap-0.5 shrink-0">
                     <button
                       type="button"
@@ -197,7 +204,7 @@ export function PlantillasWhatsappPage() {
                 </p>
                 </div>
               </div>
-              {isAdmin && (
+              {puedeEditar && (
                 <div className="flex border-t border-slate-100">
                   <button
                     type="button"

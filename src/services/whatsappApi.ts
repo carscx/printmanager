@@ -26,7 +26,7 @@ export const whatsappApi = {
     return (data ?? []) as PlantillaWhatsapp[];
   },
 
-  /** Todas las plantillas (admin): para listar y gestionar */
+  /** Todas las plantillas (gestión: admin u operador) */
   async fetchAllPlantillas(): Promise<PlantillaWhatsapp[]> {
     const { data, error } = await sb
       .from("plantillas_whatsapp")
