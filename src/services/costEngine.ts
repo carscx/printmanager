@@ -344,19 +344,31 @@ export const costEngine = {
 // ── Costo por unidad tarifaria (para pantalla Precios y alertas de margen) ──
 
 /**
- * Costo variable por 1 unidad tarifaria de impresión (desde `precios_impresion.costo_insumo_directo`, motor SQL).
+ * Costo variable por 1 hoja tarifaria: insumos (`costo_insumo_directo`) +, si hay `equipo_id`,
+ * amortización + mantenimiento por página (misma lógica que `calcularCostoPorPagina`).
  */
-export function costoVariablePorUnidadImpresion(precio: PrecioImpresion): number {
+export function costoVariablePorUnidadImpresion(
+  precio: PrecioImpresion,
+  equipos?: Equipo[]
+): number {
+  let insumos = 0;
   const v = precio.costo_insumo_directo;
   if (v != null && Number.isFinite(Number(v)) && Number(v) > 0) {
-    return Number(v);
+    insumos = Number(v);
   }
-  return 0;
+  let aporteEquipo = 0;
+  if (precio.equipo_id && equipos?.length) {
+    const eq = equipos.find((e) => e.id === precio.equipo_id);
+    if (eq) aporteEquipo = calcularCostoPorPagina(eq);
+  }
+  return insumos + aporteEquipo;
 }
 
-export function tieneCostoDirectoTarifaImpresion(precio: PrecioImpresion): boolean {
-  const v = precio.costo_insumo_directo;
-  return v != null && Number(v) > 0.005;
+export function tieneCostoDirectoTarifaImpresion(
+  precio: PrecioImpresion,
+  equipos?: Equipo[]
+): boolean {
+  return costoVariablePorUnidadImpresion(precio, equipos) > 0.005;
 }
 
 /**

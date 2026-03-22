@@ -15,7 +15,7 @@ import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
  * o INSERT con `nombre` devuelve 400/PGRST204. El default en BD aplica para `nombre`.
  */
 const PRECIOS_IMPRESION_SELECT =
-  "id,tipo,doble_faz,precio_venta,activo,updated_at,updated_by,costo_insumo_directo" as const;
+  "id,tipo,doble_faz,precio_venta,activo,updated_at,updated_by,costo_insumo_directo,equipo_id" as const;
 
 export const preciosApi = {
   // ── CONFIGURACIÓN DE NEGOCIO (Épica 1, single row) ───────────────────────
@@ -146,13 +146,14 @@ export const preciosApi = {
 
   async actualizarPrecioImpresionCompleto(
     id: string,
-    patch: Partial<Pick<PrecioImpresion, "precio_venta" | "activo">>
+    patch: Partial<Pick<PrecioImpresion, "precio_venta" | "activo" | "equipo_id">>
   ): Promise<void> {
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
     const row: Record<string, unknown> = { updated_by: uid };
     if (patch.precio_venta !== undefined)
       row.precio_venta = patch.precio_venta;
     if (patch.activo !== undefined) row.activo = patch.activo;
+    if (patch.equipo_id !== undefined) row.equipo_id = patch.equipo_id;
     const upd = await sb
       .from("precios_impresion")
       .update(row)

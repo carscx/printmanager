@@ -63,7 +63,7 @@ export function MargenTarifaHint({
   return (
     <div className="mt-1 space-y-0.5">
       <p className="text-[10px] text-slate-500 font-semibold leading-none">
-        Costo var. {formatCurrency(costo)} · Margen{" "}
+        Costo neto {formatCurrency(costo)} (insumos + equipo) · Margen{" "}
         <span className={colorMargen(vigente.margenPct)}>
           {vigente.margenPct != null
             ? `${vigente.margenPct.toFixed(1)}%`

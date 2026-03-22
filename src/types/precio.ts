@@ -14,6 +14,8 @@ export interface PrecioImpresion {
   doble_faz: boolean;
   /** Etiqueta opcional (varias tarifas por tipo/faz; solo una activa). */
   nombre?: string | null;
+  /** Equipo para ROI (vista `v_equipo_resumen_roi`); migración 37. */
+  equipo_id?: string | null;
   precio_venta: number;
   /** Costo variable insumos/hoja (antes factores); alimenta vistas SQL de margen. */
   costo_insumo_directo?: number | null;

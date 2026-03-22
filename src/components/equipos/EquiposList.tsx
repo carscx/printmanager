@@ -4,9 +4,11 @@ import {
   EQUIPO_TIPO_ICONS,
   calcularCostoPorPagina
 } from "../../types/equipo";
+import type { EquipoResumenRoi } from "../../services/equiposApi";
 
 interface EquiposListProps {
   equipos: Equipo[];
+  roiById: Map<string, EquipoResumenRoi>;
   loading: boolean;
   mostrarInactivos: boolean;
   setMostrarInactivos: (v: boolean) => void;
@@ -23,11 +25,73 @@ function CostoBadge({ equipo }: { equipo: Equipo }) {
   );
 }
 
+function RoiRecuperacionBar({
+  ganancia,
+  costoAdquisicion,
+  ratioPct
+}: {
+  ganancia: number;
+  costoAdquisicion: number;
+  ratioPct: number | null;
+}) {
+  const ratio =
+    ratioPct != null
+      ? ratioPct
+      : costoAdquisicion > 0
+        ? (ganancia / costoAdquisicion) * 100
+        : 0;
+  const ancho = Math.min(100, Math.max(0, ratio));
+
+  return (
+    <div className="bg-slate-50 rounded-sm p-3 space-y-2 border border-slate-100">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+          Recuperación vs adquisición
+        </span>
+        <span className="text-[10px] font-black text-slate-700">
+          {Number.isFinite(ratio) && (costoAdquisicion > 0 || ratioPct != null)
+            ? `${ratio.toFixed(1)}%`
+            : "—"}
+        </span>
+      </div>
+      <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${
+            ratio >= 100 ? "bg-emerald-500" : "bg-blue-500"
+          }`}
+          style={{ width: `${ancho}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[9px] font-bold text-slate-500">
+        <span>
+          Ganancia acum.{" "}
+          <span className="text-slate-800">
+            ${Math.round(ganancia).toLocaleString("es-AR")}
+          </span>
+        </span>
+        <span>
+          Inversión{" "}
+          <span className="text-slate-800">
+            ${Math.round(costoAdquisicion).toLocaleString("es-AR")}
+          </span>
+        </span>
+      </div>
+      {ratio >= 100 && (
+        <p className="text-[9px] font-bold text-emerald-600">
+          Inversión cubierta por ganancias atribuidas
+        </p>
+      )}
+    </div>
+  );
+}
+
 function EquipoCard({
   equipo,
+  roi,
   onSelect
 }: {
   equipo: Equipo;
+  roi?: EquipoResumenRoi;
   onSelect: () => void;
 }) {
   const costoPag = calcularCostoPorPagina(equipo);
@@ -98,6 +162,14 @@ function EquipoCard({
         )}
       </div>
 
+      {roi && (
+        <RoiRecuperacionBar
+          ganancia={roi.ganancia_acumulada}
+          costoAdquisicion={roi.costo_adquisicion}
+          ratioPct={roi.ratio_recuperacion_pct}
+        />
+      )}
+
       {equipo.notas && (
         <p className="text-xs text-slate-400 italic truncate">{equipo.notas}</p>
       )}
@@ -118,6 +190,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 
 export function EquiposList({
   equipos,
+  roiById,
   loading,
   mostrarInactivos,
   setMostrarInactivos,
@@ -175,6 +248,7 @@ export function EquiposList({
             <EquipoCard
               key={equipo.id}
               equipo={equipo}
+              roi={roiById.get(equipo.id)}
               onSelect={() => onSelect(equipo)}
             />
           ))}

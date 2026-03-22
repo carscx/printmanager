@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useEquipos } from "../hooks/useEquipos";
-import { equiposApi } from "../services/equiposApi";
+import { equiposApi, type EquipoResumenRoi } from "../services/equiposApi";
 import { EquiposList } from "../components/equipos/EquiposList";
 import { EquipoForm } from "../components/equipos/EquipoForm";
 import type { Equipo, EquipoInput } from "../types/equipo";
@@ -10,10 +10,31 @@ type Vista = "lista" | "formulario";
 export function EquiposPage() {
   const { equipos, loading, reload, mostrarInactivos, setMostrarInactivos } =
     useEquipos(true);
+  const [roiRows, setRoiRows] = useState<EquipoResumenRoi[]>([]);
   const [vista, setVista] = useState<Vista>("lista");
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<Equipo | null>(
     null
   );
+
+  const reloadRoi = useCallback(async () => {
+    try {
+      setRoiRows(await equiposApi.fetchResumenRoi());
+    } catch {
+      setRoiRows([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reloadRoi();
+  }, [reloadRoi]);
+
+  const roiById = useMemo(() => {
+    const m = new Map<string, EquipoResumenRoi>();
+    for (const r of roiRows) {
+      m.set(r.equipo_id, r);
+    }
+    return m;
+  }, [roiRows]);
 
   const handleNuevo = useCallback(() => {
     setEquipoSeleccionado(null);
@@ -34,9 +55,10 @@ export function EquiposPage() {
       }
       setVista("lista");
       setEquipoSeleccionado(null);
-      reload();
+      await reload();
+      await reloadRoi();
     },
-    [equipoSeleccionado, reload]
+    [equipoSeleccionado, reload, reloadRoi]
   );
 
   const handleClose = useCallback(() => {
@@ -49,6 +71,7 @@ export function EquiposPage() {
       {vista === "lista" && (
         <EquiposList
           equipos={equipos}
+          roiById={roiById}
           loading={loading}
           mostrarInactivos={mostrarInactivos}
           setMostrarInactivos={setMostrarInactivos}

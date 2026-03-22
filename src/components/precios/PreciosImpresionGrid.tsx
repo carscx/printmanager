@@ -44,7 +44,7 @@ export function PreciosImpresionGrid({
   onReload,
   onAjusteMasivo,
   insumos: _insumos,
-  equipos: _equipos,
+  equipos,
   costosListos
 }: Props) {
   const { state: confirmState, abrir: abrirConfirm, cerrar: cerrarConfirm } =
@@ -59,7 +59,8 @@ export function PreciosImpresionGrid({
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draftEdit, setDraftEdit] = useState({
-    precio: ""
+    precio: "",
+    equipoId: "" as string
   });
 
   const [editRapidoId, setEditRapidoId] = useState<string | null>(null);
@@ -78,10 +79,10 @@ export function PreciosImpresionGrid({
   const costoPorId = useMemo(() => {
     const m = new Map<string, number>();
     for (const p of precios) {
-      m.set(p.id, costoVariablePorUnidadImpresion(p));
+      m.set(p.id, costoVariablePorUnidadImpresion(p, equipos));
     }
     return m;
-  }, [precios]);
+  }, [precios, equipos]);
 
   const iniciarEdicionRapida = (p: PrecioImpresion) => {
     setEditRapidoId(p.id);
@@ -131,7 +132,8 @@ export function PreciosImpresionGrid({
   const iniciarEdicionCompleta = (p: PrecioImpresion) => {
     setEditandoId(p.id);
     setDraftEdit({
-      precio: String(p.precio_venta)
+      precio: String(p.precio_venta),
+      equipoId: p.equipo_id ?? ""
     });
   };
 
@@ -147,7 +149,8 @@ export function PreciosImpresionGrid({
     setSaving(true);
     try {
       await preciosApi.actualizarPrecioImpresionCompleto(id, {
-        precio_venta: precio
+        precio_venta: precio,
+        equipo_id: draftEdit.equipoId === "" ? null : draftEdit.equipoId
       });
       if (ganancia < 0) {
         showToast("PRECIO POR DEBAJO DEL COSTO VARIABLE ESTIMADO", "error");
@@ -356,7 +359,7 @@ export function PreciosImpresionGrid({
         {preciosOrdenados.map((p) => {
           const costo = costoPorId.get(p.id) ?? 0;
           const avisoCosto: AvisoCostoTarifa =
-            !tieneCostoDirectoTarifaImpresion(p) && costo < 0.005
+            !tieneCostoDirectoTarifaImpresion(p, equipos) && costo < 0.005
               ? "sin_reglas"
               : null;
           const borrador =
@@ -392,6 +395,28 @@ export function PreciosImpresionGrid({
                         }
                         className="mt-1 w-28 p-2 rounded-sm border border-blue-200 font-black text-sm"
                       />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase">
+                        Equipo (ROI)
+                      </label>
+                      <select
+                        value={draftEdit.equipoId}
+                        onChange={(e) =>
+                          setDraftEdit((d) => ({
+                            ...d,
+                            equipoId: e.target.value
+                          }))
+                        }
+                        className="mt-1 w-full min-w-[200px] p-2 rounded-sm border border-blue-200 text-sm font-bold text-slate-800 bg-white"
+                      >
+                        <option value="">Sin asignar</option>
+                        {equipos.map((eq) => (
+                          <option key={eq.id} value={eq.id}>
+                            {eq.nombre}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex gap-2">
                       <button
