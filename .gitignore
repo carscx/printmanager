@@ -26,3 +26,4 @@ dist-ssr
 # Evolution API (repo externo; no versionar)
 evolution-api/
 .env
+.cursorrules

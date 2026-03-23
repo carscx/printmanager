@@ -4,7 +4,7 @@ import type {
   PlantillaWhatsapp
 } from "../types/whatsapp";
 import type { ConfigCosto } from "../types/precio";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency, formatDateFromInput } from "../utils/formatters";
 import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 
 interface RenderContext {
@@ -154,6 +154,9 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
     pagoTotal || senaP <= EPS_PESOS
       ? ""
       : `💰 Seña: ${formatCurrency(senaP)} · Resto a pagar: ${formatCurrency(restaP)}`;
+  const fechaEntregaTexto = pedido.fecha_entrega
+    ? formatDateFromInput(pedido.fecha_entrega)
+    : "";
 
   const replacements: Record<string, string> = {
     "{{cliente}}": pedido.cliente,
@@ -163,7 +166,7 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
     "{{resta}}": formatCurrency(restaP),
     "{{linea_sena}}": lineaSena,
     "{{estado}}": pedido.estado,
-    "{{fecha_entrega}}": pedido.fecha_entrega ?? "",
+    "{{fecha_entrega}}": fechaEntregaTexto,
     "{{alias_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_alias"),
     "{{cbu}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_cbu"),
     "{{titular_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_titular"),

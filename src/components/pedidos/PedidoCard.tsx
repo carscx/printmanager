@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import type { Pedido, EstadoPedido } from "../../types/pedido";
 import { PedidoEstadoSwitcher } from "./PedidoEstadoSwitcher";
 import { Badge } from "../ui/Badge";
@@ -23,6 +23,7 @@ export function PedidoCard({
   onTransition,
   onWA
 }: PedidoCardProps) {
+  const [mostrarTodosLosItems, setMostrarTodosLosItems] = useState(false);
   const estadoRaw = normalizarEstadoPedido(p.estado);
 
   const borderConfig: Record<EstadoPedido, string> = {
@@ -64,6 +65,33 @@ export function PedidoCard({
       showToast("NO SE PUDO COPIAR", "error");
     }
   };
+
+  const getAnilladoLabel = (
+    anillado: string | null | undefined,
+    anilladoMedidaMm?: number | null
+  ) => {
+    const textoOriginal = String(anillado ?? "").trim();
+    const valor = textoOriginal.toLowerCase();
+    if (!valor || valor === "no" || valor === "ninguno" || valor === "sin") {
+      return "SIN ANILLADO";
+    }
+    const medidaValida =
+      typeof anilladoMedidaMm === "number" && anilladoMedidaMm > 0
+        ? `${anilladoMedidaMm} mm`
+        : "";
+    const conMedidaCorregida = medidaValida
+      ? textoOriginal.replace(/\b0+\s*mm\b/gi, medidaValida)
+      : textoOriginal;
+    const limpio = conMedidaCorregida
+      .replace(/\b0+\s*mm\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+·/g, " ·")
+      .replace(/·\s*$/g, "")
+      .trim();
+    return `ANILLADO ${(limpio || "SI").toUpperCase()}`;
+  };
+
+  const itemsVisibles = mostrarTodosLosItems ? items : items.slice(0, 3);
 
   return (
     <div
@@ -151,7 +179,7 @@ export function PedidoCard({
 
       <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
         <div className="space-y-2">
-          {items.slice(0, 3).map((it, idx) => (
+          {itemsVisibles.map((it, idx) => (
             <p
               key={idx}
               className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2"
@@ -159,13 +187,20 @@ export function PedidoCard({
               <span className="w-1 h-1 bg-slate-300 rounded-full" />
               {it.paginas || 0} PAG{" "}
               {(it.copias ?? 1) > 1 ? `×${it.copias}` : ""} |{" "}
-              {it.tipo_impresion}
+              {it.tipo_impresion} |{" "}
+              {getAnilladoLabel(it.anillado, it.anillado_medida_mm)}
             </p>
           ))}
           {items.length > 3 && (
-            <p className="text-[10px] text-slate-400 font-bold pl-3">
-              + {items.length - 3} archivos más...
-            </p>
+            <button
+              type="button"
+              className="text-[10px] text-blue-600 font-bold pl-3 underline decoration-dotted underline-offset-2 hover:text-blue-700"
+              onClick={() => setMostrarTodosLosItems((prev) => !prev)}
+            >
+              {mostrarTodosLosItems
+                ? "Mostrar menos"
+                : `+ ${items.length - 3} archivos más...`}
+            </button>
           )}
 
           {p.observaciones && (
