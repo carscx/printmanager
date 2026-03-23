@@ -22,6 +22,8 @@ export function PedidoEstadoSwitcher({
 }: PedidoEstadoSwitcherProps) {
   const estado = normalizarEstadoPedido(pedido.estado);
   const totalP = totalVentaPedido(pedido);
+  const senaP = Number(pedido.sena ?? 0);
+  const pagoTotal = totalP > 0 && senaP >= totalP;
 
   switch (estado) {
     case "presupuesto":
@@ -46,19 +48,26 @@ export function PedidoEstadoSwitcher({
           >
             Listo en taller
           </button>
-          <button
-            type="button"
-            onClick={() => onTransition(pedido, "pagado")}
-            className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
-            disabled={disabled}
-          >
-            Cobrar total (
-            {totalP > 0 ? `$${totalP.toLocaleString("es-AR")}` : "—"})
-          </button>
+          {!pagoTotal && (
+            <button
+              type="button"
+              onClick={() => onTransition(pedido, "pagado")}
+              className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
+              disabled={disabled}
+            >
+              Cobrar total (
+              {totalP > 0 ? `$${totalP.toLocaleString("es-AR")}` : "—"})
+            </button>
+          )}
         </div>
       );
     case "listo":
-      return (
+      return pagoTotal ? (
+        <span className={`${badgeEstado} border-emerald-200 bg-emerald-50 text-emerald-700`}>
+          <i className="fas fa-circle-check mr-2" aria-hidden />
+          Pago total registrado
+        </span>
+      ) : (
         <button
           type="button"
           onClick={() => onTransition(pedido, "pagado")}

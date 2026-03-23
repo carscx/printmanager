@@ -3,18 +3,22 @@ import { PedidoCard } from "./PedidoCard";
 
 interface PedidoListProps {
   pedidos: Pedido[];
+  isAdmin: boolean;
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
   onWA: (p: Pedido) => void;
+  onDescargarControlPdf: (p: Pedido) => void;
 }
 
 export function PedidoList({
   pedidos,
+  isAdmin,
   onBorrar,
   onEditar,
   onTransition,
-  onWA
+  onWA,
+  onDescargarControlPdf
 }: PedidoListProps) {
   if (pedidos.length === 0) {
     return (
@@ -30,10 +34,12 @@ export function PedidoList({
         <PedidoCard
           key={p.id}
           pedido={p}
+          isAdmin={isAdmin}
           onBorrar={onBorrar}
           onEditar={onEditar}
           onTransition={onTransition}
           onWA={onWA}
+          onDescargarControlPdf={onDescargarControlPdf}
         />
       ))}
     </div>

@@ -10,18 +10,22 @@ import { showToast } from "../ui/Toast";
 
 interface PedidoCardProps {
   pedido: Pedido;
+  isAdmin: boolean;
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
   onWA: (p: Pedido) => void;
+  onDescargarControlPdf: (p: Pedido) => void;
 }
 
 export function PedidoCard({
   pedido: p,
+  isAdmin,
   onBorrar,
   onEditar,
   onTransition,
-  onWA
+  onWA,
+  onDescargarControlPdf
 }: PedidoCardProps) {
   const [mostrarTodosLosItems, setMostrarTodosLosItems] = useState(false);
   const estadoRaw = normalizarEstadoPedido(p.estado);
@@ -40,6 +44,9 @@ export function PedidoCard({
   const fDate = p.fecha_entrega ? formatDateFromInput(p.fecha_entrega) : "⏳";
   const totalP = totalVentaPedido(p);
   const senaP = Number(p.sena ?? 0);
+  const pagoTotal = totalP > 0 && senaP >= totalP;
+  const estaPagadoPorEstado = estadoRaw === "pagado" || estadoRaw === "entregado";
+  const mostrarComprobante = isAdmin && (pagoTotal || estaPagadoPorEstado);
 
   const etiquetaEstado: Record<EstadoPedido, string> = {
     presupuesto: "Presupuesto",
@@ -258,6 +265,18 @@ export function PedidoCard({
             "WHATSAPP"
           )}
         </button>
+        {mostrarComprobante && (
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={() => onDescargarControlPdf(p)}
+              className="bg-slate-900 hover:bg-slate-800 text-white py-3 px-4 rounded-sm text-[10px] font-black uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-all active:scale-95"
+            >
+              <i className="fas fa-file-pdf text-base" />
+              Descargar comprobante
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

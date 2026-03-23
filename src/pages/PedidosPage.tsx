@@ -6,6 +6,7 @@ import { PedidoList } from "../components/pedidos/PedidoList";
 import { ConfirmSheet, useConfirmSheet } from "../components/ui/ConfirmSheet";
 import { showToast } from "../components/ui/Toast";
 import { SkeletonPedidoList } from "../components/ui/Skeleton";
+import { BottomSheet } from "../components/ui/BottomSheet";
 import { useCartStore } from "../store/useCartStore";
 import { api, type HistorialFiltros } from "../services/api";
 import { normalizarEstadoPedido } from "../utils/pedidoEstado";
@@ -13,6 +14,10 @@ import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 import { pedidosToCSV } from "../utils/pedidosCsv";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
 import { useAuth } from "../hooks/useAuth";
+import {
+  descargarPedidoControlPdf,
+  type FormaPagoComprobante
+} from "../services/pedidoControlPdf";
 
 type DatePreset = "todo" | "hoy" | "semana" | "mes" | "custom";
 type TipoTrabajo = "bn" | "color" | "anillado" | "todos";
@@ -58,6 +63,7 @@ export function PedidosPage() {
   const [openEstado, setOpenEstado] = useState(false);
   const [openTipo, setOpenTipo] = useState(false);
   const [openCobranza, setOpenCobranza] = useState(false);
+  const [pedidoComprobante, setPedidoComprobante] = useState<Pedido | null>(null);
 
   const [page, setPage] = useState(0);
   const pageSize = 15;
@@ -310,6 +316,22 @@ export function PedidosPage() {
 
   const handleWA = (p: Pedido) => {
     navigate(`/pedido/${p.id}/whatsapp`);
+  };
+
+  const handleDescargarControlPdf = (p: Pedido) => {
+    setPedidoComprobante(p);
+  };
+
+  const handleDescargarControlConForma = (formaPago: FormaPagoComprobante) => {
+    if (!pedidoComprobante) return;
+    try {
+      descargarPedidoControlPdf(pedidoComprobante, formaPago);
+      showToast("COMPROBANTE DESCARGADO");
+      setPedidoComprobante(null);
+    } catch (e) {
+      console.error(e);
+      showToast("NO SE PUDO GENERAR EL PDF", "error");
+    }
   };
 
   const triggerDownload = (csv: string, filename: string) => {
@@ -599,10 +621,12 @@ export function PedidosPage() {
         ) : (
           <PedidoList
             pedidos={pedidos}
+            isAdmin={isAdmin}
             onBorrar={handleBorrar}
             onEditar={handleEditar}
             onTransition={handleTransition}
             onWA={handleWA}
+            onDescargarControlPdf={handleDescargarControlPdf}
           />
         )}
       </div>
@@ -669,6 +693,41 @@ export function PedidosPage() {
         value={tipoTrabajo}
         onChange={(v) => setTipoTrabajo(v as TipoTrabajo)}
       />
+
+      <BottomSheet
+        open={Boolean(pedidoComprobante)}
+        onClose={() => setPedidoComprobante(null)}
+        title="Forma de pago"
+      >
+        <div className="space-y-3 pt-2">
+          <p className="text-center text-sm font-bold text-slate-700">
+            Seleccioná cómo se pagó este pedido
+          </p>
+          <button
+            type="button"
+            onClick={() => handleDescargarControlConForma("Efectivo")}
+            className="w-full py-4 rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <i className="fas fa-money-bill-wave" />
+            Efectivo
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDescargarControlConForma("Transferencia")}
+            className="w-full py-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <i className="fas fa-building-columns" />
+            Transferencia
+          </button>
+          <button
+            type="button"
+            onClick={() => setPedidoComprobante(null)}
+            className="w-full py-3 rounded-sm bg-slate-100 text-slate-500 text-xs font-black uppercase tracking-[0.14em] hover:bg-slate-200"
+          >
+            Cancelar
+          </button>
+        </div>
+      </BottomSheet>
 
       <ConfirmSheet {...confirmState} onClose={cerrarConfirm} />
     </section>
