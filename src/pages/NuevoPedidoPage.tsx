@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useCartStore } from "../store/useCartStore";
 import { usePedidos } from "../hooks/usePedidos";
@@ -40,8 +40,11 @@ const ESTADO_EDICION_OPTS: { value: EstadoPedido; label: string }[] = [
   { value: "cancelado", label: "Cancelado" }
 ];
 
+type NuevoPedidoLocationState = { modo?: "nuevo" };
+
 export function NuevoPedidoPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { crear, actualizar } = usePedidos();
   const {
@@ -246,6 +249,23 @@ export function NuevoPedidoPage() {
     resetFormItemFieldsOnly();
     setEditingItemIndex(null);
   };
+
+  /**
+   * Entrada explícita a “nuevo pedido” (barra inferior / menú) debe vaciar el carrito
+   * persistido y el formulario; si no, tras editar un pedido se seguía viendo esa edición.
+   */
+  useLayoutEffect(() => {
+    const state = location.state as NuevoPedidoLocationState | null;
+    if (state?.modo !== "nuevo") return;
+    useCartStore.getState().reset();
+    resetFormItemFieldsOnly();
+    setEditingItemIndex(null);
+    setErrCliente(false);
+    setErrFecha(false);
+    setErrPaginas(false);
+    setOpenEstadoEdicion(false);
+    navigate("/nuevo-pedido", { replace: true, state: {} });
+  }, [location.key, location.state, navigate]);
 
   const startEditItem = (index: number) => {
     const it = cart.items[index];

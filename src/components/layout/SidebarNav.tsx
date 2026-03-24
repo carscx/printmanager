@@ -30,7 +30,14 @@ export function SidebarNav({
           return (
             <button
               key={`${item.path}-${item.label}`}
-              onClick={() => navigate(item.path)}
+              onClick={() =>
+                navigate(
+                  item.path,
+                  item.path === "/nuevo-pedido"
+                    ? { state: { modo: "nuevo" } }
+                    : undefined
+                )
+              }
               className={`flex items-center gap-3 px-4 py-3 rounded-sm font-bold text-base transition-colors text-left w-full ${
                 isActive
                   ? "bg-blue-50 text-blue-700 shadow"
