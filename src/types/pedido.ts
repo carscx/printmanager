@@ -55,6 +55,8 @@ export interface Pedido {
   forma_pago_sena?: "transferencia" | null;
   /** Cobro total del saldo: efectivo o transferencia (modal Cobrar total) */
   forma_pago_total?: "efectivo" | "transferencia" | null;
+  /** Incluido en exportación facturación ARCA */
+  facturado?: boolean;
   // Relación
   pedido_items: PedidoItem[];
 }

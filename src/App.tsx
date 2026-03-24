@@ -18,6 +18,7 @@ import HistorialPage from "./pages/HistorialPage";
 import ReportesPage from "./pages/ReportesPage";
 import { WhatsappPreviewPage } from "./pages/WhatsappPreviewPage";
 import { PlantillasWhatsappPage } from "./pages/PlantillasWhatsappPage";
+import { FacturacionPage } from "./pages/FacturacionPage";
 import { useAuth } from "./hooks/useAuth";
 import { OfflineBanner } from "./components/ui/OfflineBanner";
 import ReloadPrompt from "./components/ReloadPrompt";
@@ -136,6 +137,20 @@ function AuthenticatedShell({
                     <ReportesPage />
                   </ProtectedRoute>
                 }
+              />
+              <Route
+                path="/facturacion"
+                element={
+                  <ProtectedRoute user={user}>
+                    <NonOperadorRoute user={user}>
+                      <FacturacionPage />
+                    </NonOperadorRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/facturacion-arca"
+                element={<Navigate to="/facturacion" replace />}
               />
               <Route
                 path="/pedido/:id/whatsapp"

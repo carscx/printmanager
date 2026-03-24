@@ -11,30 +11,38 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Pedidos",
   "/nuevo-pedido": "Pedido / Presupuesto",
   "/insumos": "Insumos",
-  "/equipos": "Equipos"
+  "/equipos": "Equipos",
+  "/facturacion": "Facturación"
 };
 
 export function Header({ onOpenSettings, user, onLogout }: HeaderProps) {
   const location = useLocation();
   const pageTitle = PAGE_TITLES[location.pathname] || "Gestión Moni";
+  const nombreVisible = user.name?.trim() || "Usuario";
 
   return (
-    <header className="flex justify-between items-center bg-white px-4 py-3 rounded-sm shadow-sm border border-gray-100">
-      {/* Logo + page title */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-2 h-7 bg-blue-600 rounded-full flex-shrink-0" />
-        <div className="min-w-0">
+    <header className="flex justify-between items-start sm:items-center gap-3 bg-white px-4 py-3 rounded-sm shadow-sm border border-gray-100">
+      {/* Logo + página + sesión */}
+      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+        <div className="w-2 h-7 bg-blue-600 rounded-full flex-shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
           <h1 className="text-base font-black tracking-tighter italic uppercase leading-none truncate lg:text-xl">
             {pageTitle}
           </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate hidden sm:block">
-            {user.name || user.email}
-          </p>
+          <div className="mt-2 flex items-center gap-2 min-w-0">
+            <i
+              className="fas fa-user-circle text-slate-400 text-lg shrink-0"
+              aria-hidden
+            />
+            <p className="text-xs font-bold text-slate-800 truncate min-w-0">
+              {nombreVisible}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Actions - minimal on mobile */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0 self-center">
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}

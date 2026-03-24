@@ -27,14 +27,25 @@ export function buildNavItems(isAdmin: boolean, role: UserRole): NavItem[] {
           (i) => i.path !== "/precios" && i.path !== "/equipos"
         )
       : TAIL;
+  const facturacion: NavItem = {
+    path: "/facturacion",
+    icon: "fa-file-invoice",
+    label: "Facturación"
+  };
   if (isAdmin) {
     return [
       { path: "/dashboard", icon: "fa-home", label: "Inicio" },
       { path: "/pedidos", icon: "fa-clipboard-list", label: "Pedidos" },
-      ...tail
+      ...tail,
+      facturacion
     ];
   }
-  return [{ path: "/pedidos", icon: "fa-home", label: "Inicio" }, ...tail];
+  /** Vendedor: misma sección que admin (no es el listado de pedidos). Operador no la ve. */
+  const base = [{ path: "/pedidos", icon: "fa-home", label: "Inicio" }, ...tail];
+  if (role !== "operador") {
+    return [...base, facturacion];
+  }
+  return base;
 }
 
 export function isNavItemActive(path: string, pathname: string): boolean {
@@ -48,5 +59,6 @@ export function isNavItemActive(path: string, pathname: string): boolean {
     );
   }
   if (path === "/") return pathname === "/";
+  if (path === "/facturacion") return pathname === "/facturacion";
   return pathname.startsWith(path);
 }
