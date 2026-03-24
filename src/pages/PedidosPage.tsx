@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Pedido, EstadoPedido } from "../types/pedido";
+import type {
+  Pedido,
+  EstadoPedido,
+  FormaPagoCobroTotal
+} from "../types/pedido";
 import { usePedidos } from "../hooks/usePedidos";
 import { PedidoList } from "../components/pedidos/PedidoList";
 import { ConfirmSheet, useConfirmSheet } from "../components/ui/ConfirmSheet";
@@ -64,6 +68,8 @@ export function PedidosPage() {
   const [openTipo, setOpenTipo] = useState(false);
   const [openCobranza, setOpenCobranza] = useState(false);
   const [pedidoComprobante, setPedidoComprobante] = useState<Pedido | null>(null);
+  /** Modal cobro total: elegir efectivo / transferencia */
+  const [pedidoCobroTotal, setPedidoCobroTotal] = useState<Pedido | null>(null);
 
   const [page, setPage] = useState(0);
   const pageSize = 15;
@@ -282,18 +288,13 @@ export function PedidosPage() {
         return;
       }
 
-      if (nuevo === "pagado") {
-        await api.updatePedidoPatch(p.id, {
-          estado: "pagado",
-          sena: totalP
-        });
-        showToast("PAGO REGISTRADO");
-        await refresh();
-        return;
-      }
-
       if (nuevo === "entregado") {
-        if (act !== "pagado") {
+        const pagadoCompleto =
+          act === "pagado" ||
+          (act === "listo" &&
+            totalP > 0 &&
+            Number(p.sena ?? 0) >= totalP);
+        if (!pagadoCompleto) {
           showToast("Solo se puede entregar si está pagado", "error");
           return;
         }
@@ -311,6 +312,29 @@ export function PedidosPage() {
     } catch (e) {
       console.error(e);
       showToast("NO SE PUDO ACTUALIZAR EL PEDIDO", "error");
+    }
+  };
+
+  const handleCobrarTotal = (p: Pedido) => {
+    setPedidoCobroTotal(p);
+  };
+
+  const confirmarCobroTotal = async (forma: FormaPagoCobroTotal) => {
+    if (!pedidoCobroTotal) return;
+    const p = pedidoCobroTotal;
+    const totalP = totalVentaPedido(p);
+    try {
+      await api.updatePedidoPatch(p.id, {
+        estado: "listo",
+        sena: totalP,
+        forma_pago_total: forma
+      });
+      showToast("COBRO REGISTRADO — LISTO PARA RETIRAR");
+      setPedidoCobroTotal(null);
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      showToast("NO SE PUDO REGISTRAR EL COBRO", "error");
     }
   };
 
@@ -625,6 +649,7 @@ export function PedidosPage() {
             onBorrar={handleBorrar}
             onEditar={handleEditar}
             onTransition={handleTransition}
+            onCobrarTotal={handleCobrarTotal}
             onWA={handleWA}
             onDescargarControlPdf={handleDescargarControlPdf}
           />
@@ -693,6 +718,50 @@ export function PedidosPage() {
         value={tipoTrabajo}
         onChange={(v) => setTipoTrabajo(v as TipoTrabajo)}
       />
+
+      <BottomSheet
+        open={Boolean(pedidoCobroTotal)}
+        onClose={() => setPedidoCobroTotal(null)}
+        title="Forma de pago del cobro total"
+      >
+        <div className="space-y-3 pt-2">
+          <p className="text-center text-sm font-bold text-slate-700 px-1">
+            Elegí cómo se cobró el saldo. El pedido pasa a listo para retirar.
+          </p>
+          {pedidoCobroTotal && (
+            <p className="text-center text-xs font-bold text-slate-500">
+              Total:{" "}
+              <span className="text-slate-800">
+                $
+                {totalVentaPedido(pedidoCobroTotal).toLocaleString("es-AR")}
+              </span>
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => void confirmarCobroTotal("efectivo")}
+            className="w-full py-4 rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <i className="fas fa-money-bill-wave" />
+            Efectivo
+          </button>
+          <button
+            type="button"
+            onClick={() => void confirmarCobroTotal("transferencia")}
+            className="w-full py-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-[0.14em] flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <i className="fas fa-building-columns" />
+            Transferencia
+          </button>
+          <button
+            type="button"
+            onClick={() => setPedidoCobroTotal(null)}
+            className="w-full py-3 rounded-sm bg-slate-100 text-slate-500 text-xs font-black uppercase tracking-[0.14em] hover:bg-slate-200"
+          >
+            Cancelar
+          </button>
+        </div>
+      </BottomSheet>
 
       <BottomSheet
         open={Boolean(pedidoComprobante)}

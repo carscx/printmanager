@@ -51,9 +51,16 @@ export interface Pedido {
   vendedor_id?: string | null;
   /** Comisión calculada (venta × comision_pct del vendedor) */
   comision_monto?: number | null;
+  /** Si hay seña, siempre transferencia en la app */
+  forma_pago_sena?: "transferencia" | null;
+  /** Cobro total del saldo: efectivo o transferencia (modal Cobrar total) */
+  forma_pago_total?: "efectivo" | "transferencia" | null;
   // Relación
   pedido_items: PedidoItem[];
 }
+
+/** Forma de pago al cobrar el total del pedido (UI + persistencia) */
+export type FormaPagoCobroTotal = "efectivo" | "transferencia";
 
 export type PedidoCabecera = Omit<Pedido, "id" | "pedido_items" | "created_at">;
 

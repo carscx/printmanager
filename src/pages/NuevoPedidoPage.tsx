@@ -528,6 +528,11 @@ export function NuevoPedidoPage() {
       estado: "pendiente",
       sena,
       tipo_pago: cart.tipoPago,
+      ...(sena > 0 && (cart.tipoPago === "sena_50" || cart.tipoPago === "sena_libre")
+        ? { forma_pago_sena: "transferencia" as const }
+        : sena > 0
+          ? { forma_pago_sena: null as null }
+          : {}),
       stock_descontado: false,
       entregado: false,
       fecha_pago: null

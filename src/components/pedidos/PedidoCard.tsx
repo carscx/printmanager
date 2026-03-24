@@ -14,6 +14,7 @@ interface PedidoCardProps {
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
+  onCobrarTotal: (p: Pedido) => void;
   onWA: (p: Pedido) => void;
   onDescargarControlPdf: (p: Pedido) => void;
 }
@@ -24,6 +25,7 @@ export function PedidoCard({
   onBorrar,
   onEditar,
   onTransition,
+  onCobrarTotal,
   onWA,
   onDescargarControlPdf
 }: PedidoCardProps) {
@@ -222,7 +224,7 @@ export function PedidoCard({
           <p className="text-4xl md:text-5xl font-black text-slate-900 leading-none tracking-tighter">
             {formatCurrency(totalP)}
           </p>
-          <div className="mt-1">
+          <div className="mt-1 space-y-1">
             {senaP >= totalP && totalP > 0 ? (
               <span className="text-[11px] font-black text-green-600 uppercase tracking-widest bg-green-50 px-2 py-0.5 rounded-sm">
                 PAGADO
@@ -234,12 +236,27 @@ export function PedidoCard({
                 {senaP > 0 ? `SEÑA: ${formatCurrency(senaP)}` : "SIN SEÑA"}
               </span>
             )}
+            {p.forma_pago_sena && senaP > 0 && senaP < totalP && (
+              <p className="text-[10px] font-bold text-slate-500">
+                Seña: {p.forma_pago_sena === "transferencia" ? "transferencia" : p.forma_pago_sena}
+              </p>
+            )}
+            {p.forma_pago_total && (
+              <p className="text-[10px] font-bold text-slate-500">
+                Cobro total:{" "}
+                {p.forma_pago_total === "efectivo" ? "efectivo" : "transferencia"}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
-        <PedidoEstadoSwitcher pedido={p} onTransition={onTransition} />
+        <PedidoEstadoSwitcher
+          pedido={p}
+          onTransition={onTransition}
+          onCobrarTotal={onCobrarTotal}
+        />
         <button
           type="button"
           onClick={() => onWA(p)}

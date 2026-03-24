@@ -7,6 +7,7 @@ interface PedidoListProps {
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
+  onCobrarTotal: (p: Pedido) => void;
   onWA: (p: Pedido) => void;
   onDescargarControlPdf: (p: Pedido) => void;
 }
@@ -17,6 +18,7 @@ export function PedidoList({
   onBorrar,
   onEditar,
   onTransition,
+  onCobrarTotal,
   onWA,
   onDescargarControlPdf
 }: PedidoListProps) {
@@ -38,6 +40,7 @@ export function PedidoList({
           onBorrar={onBorrar}
           onEditar={onEditar}
           onTransition={onTransition}
+          onCobrarTotal={onCobrarTotal}
           onWA={onWA}
           onDescargarControlPdf={onDescargarControlPdf}
         />

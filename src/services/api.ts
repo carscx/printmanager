@@ -120,10 +120,15 @@ export const api = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const applyCobranza = (q: any) => {
       if (cobranza === "impago") {
-        return q.in("estado", ["presupuesto", "pendiente", "listo"]);
+        // listo con cobro total registrado (forma_pago_total) cuenta como cobrado → no aparece en "impago"
+        return q.or(
+          "estado.in.(presupuesto,pendiente),and(estado.eq.listo,forma_pago_total.is.null)"
+        );
       }
       if (cobranza === "pagado") {
-        return q.in("estado", ["pagado", "entregado"]);
+        return q.or(
+          "estado.in.(pagado,entregado),and(estado.eq.listo,forma_pago_total.not.is.null)"
+        );
       }
       return q;
     };
@@ -390,12 +395,19 @@ export const api = {
     }
 
     if (stagingPedido) {
+      const senaN = Number(cabecera.sena ?? 0);
+      const tp = String(cabecera.tipo_pago ?? "");
       const { error: uErr } = await sb
         .from("pedidos")
         .update({
           modalidad: "pedido",
           estado: "pendiente",
           sena: cabecera.sena,
+          ...(senaN > 0 && (tp === "sena_50" || tp === "sena_libre")
+            ? { forma_pago_sena: "transferencia" }
+            : senaN > 0
+              ? { forma_pago_sena: null }
+              : {}),
           tipo_pago: cabecera.tipo_pago,
           total: cabecera.total,
           total_pedido: cabecera.total_pedido,

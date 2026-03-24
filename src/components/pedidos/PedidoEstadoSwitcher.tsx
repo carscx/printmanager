@@ -5,6 +5,8 @@ import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 interface PedidoEstadoSwitcherProps {
   pedido: Pedido;
   onTransition: (pedido: Pedido, nuevo: EstadoPedido) => void;
+  /** Cobrar saldo total: abre modal de forma de pago en el padre */
+  onCobrarTotal: (pedido: Pedido) => void;
   disabled?: boolean;
 }
 
@@ -18,6 +20,7 @@ const badgeEstado =
 export function PedidoEstadoSwitcher({
   pedido,
   onTransition,
+  onCobrarTotal,
   disabled
 }: PedidoEstadoSwitcherProps) {
   const estado = normalizarEstadoPedido(pedido.estado);
@@ -51,7 +54,7 @@ export function PedidoEstadoSwitcher({
           {!pagoTotal && (
             <button
               type="button"
-              onClick={() => onTransition(pedido, "pagado")}
+              onClick={() => onCobrarTotal(pedido)}
               className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
               disabled={disabled}
             >
@@ -62,15 +65,22 @@ export function PedidoEstadoSwitcher({
         </div>
       );
     case "listo":
-      return pagoTotal ? (
-        <span className={`${badgeEstado} border-emerald-200 bg-emerald-50 text-emerald-700`}>
-          <i className="fas fa-circle-check mr-2" aria-hidden />
-          Pago total registrado
-        </span>
-      ) : (
+      if (pagoTotal) {
+        return (
+          <button
+            type="button"
+            onClick={() => onTransition(pedido, "entregado")}
+            className={`${btnAct} border-violet-800 bg-violet-100 text-violet-950 hover:bg-violet-200 focus-visible:ring-violet-500`}
+            disabled={disabled}
+          >
+            Marcar entregado
+          </button>
+        );
+      }
+      return (
         <button
           type="button"
-          onClick={() => onTransition(pedido, "pagado")}
+          onClick={() => onCobrarTotal(pedido)}
           className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
           disabled={disabled}
         >
