@@ -76,6 +76,17 @@ export function PedidoCard({
       ? `${nombreCliente} #${p.numero_publico}`
       : nombreCliente;
 
+  // WhatsApp / reportes: mostramos SOLO descuentos (sin recargos).
+  const descGlobalPct = Number(p.descuento_global_porcentaje ?? 0) || 0;
+  const descGlobalMonto = Number(p.descuento_global_monto ?? 0) || 0;
+  const tieneDescGlobal = descGlobalPct > 0 || descGlobalMonto > 0;
+  const descGlobalTxt = (() => {
+    const parts: string[] = [];
+    if (descGlobalPct > 0) parts.push(`-${descGlobalPct}%`);
+    if (descGlobalMonto > 0) parts.push(`-${formatCurrency(descGlobalMonto)}`);
+    return `DESC ${parts.join(" / ")}`;
+  })();
+
   const labelForma = (v: string | null | undefined) =>
     v === "efectivo"
       ? "Efectivo"
@@ -157,6 +168,12 @@ export function PedidoCard({
               }
               className="bg-slate-100 text-slate-500 font-bold text-[10px]"
             />
+            {tieneDescGlobal && (
+              <Badge
+                text={descGlobalTxt}
+                className="bg-green-50 text-green-700 font-bold text-[10px]"
+              />
+            )}
             <Badge
               text={fDate}
               className="bg-blue-50 text-blue-600 font-bold text-[10px]"
@@ -226,6 +243,14 @@ export function PedidoCard({
               {(it.copias ?? 1) > 1 ? `×${it.copias}` : ""} |{" "}
               {it.tipo_impresion} |{" "}
               {getAnilladoLabel(it.anillado, it.anillado_medida_mm)}
+              {it.descuento_porcentaje != null &&
+                Number(it.descuento_porcentaje) > 0 && (
+                  <> | -{it.descuento_porcentaje}% DESC</>
+                )}
+              {it.descuento_monto != null &&
+                Number(it.descuento_monto) > 0 && (
+                  <> | -{formatCurrency(Number(it.descuento_monto))} DESC</>
+                )}
             </p>
           ))}
           {items.length > 3 && (

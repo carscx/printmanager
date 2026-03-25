@@ -80,6 +80,8 @@ export const VARIABLES_PLANTILLA = [
   "{{cliente}}",
   "{{detalle}}",
   "{{total}}",
+  "{{descuento_global}}",
+  "{{descuentos}}",
   "{{sena}}",
   "{{resta}}",
   "{{linea_sena}}",

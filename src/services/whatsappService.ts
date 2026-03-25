@@ -47,19 +47,42 @@ function anilladoTextoCliente(anillado: string | null | undefined): string {
   return sinMedida || "Anillado";
 }
 
-function buildDetalle(items: PedidoItem[]): string {
+function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
   if (items.length === 0) return "- (sin items)\n";
-  return items
-    .map((it) => {
-      const paginas = it.paginas || 0;
-      const copias = it.copias ?? 1;
-      const tipo = it.tipo_impresion || "B/N";
-      const aniLabel = anilladoTextoCliente(it.anillado);
-      const ani = aniLabel ? ` + ${aniLabel}` : "";
-      const copiasTxt = copias > 1 ? ` x${copias}` : "";
-      return `- ${paginas} pág ${tipo}${ani}${copiasTxt}`;
-    })
-    .join("\n");
+
+  const dgPct = Number(pedido.descuento_global_porcentaje ?? 0) || 0;
+  const dgMonto = Number(pedido.descuento_global_monto ?? 0) || 0;
+  const descuentoGlobalParts: string[] = [];
+  if (dgPct > 0) descuentoGlobalParts.push(`-${dgPct}%`);
+  if (dgMonto > 0) descuentoGlobalParts.push(`-${formatCurrency(dgMonto)}`);
+
+  const descuentoGlobalBlock =
+    descuentoGlobalParts.length > 0
+      ? `*Descuento global*\n${descuentoGlobalParts.join(" · ")}\n\n`
+      : "";
+
+  const itemLines = items.map((it) => {
+    const paginas = it.paginas || 0;
+    const copias = it.copias ?? 1;
+    const tipo = it.tipo_impresion || "B/N";
+    const aniLabel = anilladoTextoCliente(it.anillado);
+    const ani = aniLabel ? ` + ${aniLabel}` : "";
+    const copiasTxt = copias > 1 ? ` x${copias}` : "";
+
+    const descParts: string[] = [];
+    if (it.descuento_porcentaje != null && Number(it.descuento_porcentaje) > 0) {
+      descParts.push(`-${Number(it.descuento_porcentaje)}%`);
+    }
+    if (it.descuento_monto != null && Number(it.descuento_monto) > 0) {
+      descParts.push(`-${formatCurrency(Number(it.descuento_monto))}`);
+    }
+
+    const descTxt = descParts.length ? ` · Desc: ${descParts.join(" / ")}` : "";
+    return `- ${paginas} pág ${tipo}${ani}${copiasTxt}${descTxt}`;
+  });
+
+  // Nota: mostramos solo descuentos; recargos no se incluyen en WhatsApp por pedido del negocio.
+  return `${descuentoGlobalBlock}${itemLines.join("\n")}`;
 }
 
 function valueFromConfig(datosPago: ConfigCosto[], key: string): string {
@@ -160,13 +183,52 @@ export function renderWhatsappMensaje(ctx: RenderContext): string {
 
   const replacements: Record<string, string> = {
     "{{cliente}}": pedido.cliente,
-    "{{detalle}}": buildDetalle(items),
+    "{{detalle}}": buildDetalle(pedido, items),
     "{{total}}": formatCurrency(totalP),
     "{{sena}}": formatCurrency(senaP),
     "{{resta}}": formatCurrency(restaP),
     "{{linea_sena}}": lineaSena,
     "{{estado}}": pedido.estado,
     "{{fecha_entrega}}": fechaEntregaTexto,
+    "{{descuento_global}}": (() => {
+      const dgPct = Number(pedido.descuento_global_porcentaje ?? 0) || 0;
+      const dgMonto = Number(pedido.descuento_global_monto ?? 0) || 0;
+      const parts: string[] = [];
+      if (dgPct > 0) parts.push(`-${dgPct}%`);
+      if (dgMonto > 0) parts.push(`-${formatCurrency(dgMonto)}`);
+      return parts.length ? `*Descuento global* ${parts.join(" · ")}` : "";
+    })(),
+    "{{descuentos}}": (() => {
+      const dgPct = Number(pedido.descuento_global_porcentaje ?? 0) || 0;
+      const dgMonto = Number(pedido.descuento_global_monto ?? 0) || 0;
+      const globalParts: string[] = [];
+      if (dgPct > 0) globalParts.push(`-${dgPct}%`);
+      if (dgMonto > 0) globalParts.push(`-${formatCurrency(dgMonto)}`);
+
+      const itemDesc = items
+        .map((it) => {
+          const parts: string[] = [];
+          if (it.descuento_porcentaje != null && Number(it.descuento_porcentaje) > 0) {
+            parts.push(`-${Number(it.descuento_porcentaje)}%`);
+          }
+          if (it.descuento_monto != null && Number(it.descuento_monto) > 0) {
+            parts.push(`-${formatCurrency(Number(it.descuento_monto))}`);
+          }
+          return parts.length ? `${it.paginas || 0} pág · ${parts.join(" / ")}` : "";
+        })
+        .filter(Boolean);
+
+      if (globalParts.length === 0 && itemDesc.length === 0) return "";
+
+      const blocks: string[] = [];
+      if (globalParts.length > 0) {
+        blocks.push(`*Descuento global* ${globalParts.join(" · ")}`);
+      }
+      if (itemDesc.length > 0) {
+        blocks.push(`*Descuentos por ítem*\\n${itemDesc.map((x) => `- ${x}`).join("\\n")}`);
+      }
+      return blocks.join("\\n\\n");
+    })(),
     "{{alias_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_alias"),
     "{{cbu}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_cbu"),
     "{{titular_pago}}": pagoTotal ? "" : valueFromConfig(datosPago, "pago_titular"),
