@@ -13,6 +13,7 @@ import {
   aplicarDescRecGlobalACarrito,
   totalVentaPedido
 } from "../utils/pedidoTotalVenta";
+import type { FormaPagoCobro } from "../utils/pedidoFormaPago";
 
 export interface CartState {
   items: PedidoItem[];
@@ -32,6 +33,10 @@ export interface CartState {
   descRecGlobalTipo: "descuento" | "recargo";
   descRecGlobalModo: "porcentaje" | "monto";
   descRecGlobalValor: string;
+  /** Cómo se registra la seña (50 % / libre). */
+  formaPagoSena: FormaPagoCobro;
+  /** Cómo se registra el pago total (anticipo 100 % o saldo final). */
+  formaPagoTotal: FormaPagoCobro;
 
   addItem: (item: PedidoItem) => void;
   removeItem: (index: number) => void;
@@ -49,6 +54,8 @@ export interface CartState {
   setDescRecGlobalTipo: (tipo: "descuento" | "recargo") => void;
   setDescRecGlobalModo: (modo: "porcentaje" | "monto") => void;
   setDescRecGlobalValor: (valor: string) => void;
+  setFormaPagoSena: (f: FormaPagoCobro) => void;
+  setFormaPagoTotal: (f: FormaPagoCobro) => void;
   reset: () => void;
   getTotal: () => number;
   getSena: () => number;
@@ -67,7 +74,9 @@ const initialState = {
   vendedorId: null as string | null,
   descRecGlobalTipo: "descuento" as "descuento" | "recargo",
   descRecGlobalModo: "porcentaje" as "porcentaje" | "monto",
-  descRecGlobalValor: ""
+  descRecGlobalValor: "",
+  formaPagoSena: "transferencia" as FormaPagoCobro,
+  formaPagoTotal: "transferencia" as FormaPagoCobro
 };
 
 export const useCartStore = create<CartState>()(
@@ -112,6 +121,14 @@ export const useCartStore = create<CartState>()(
         const totalP = totalVentaPedido(p);
         const { tipoPago, senaLibreMonto } = inferTipoPagoSena(totalP, p.sena);
         const g = globalDescFromPedido(p);
+        const fpSena =
+          p.forma_pago_sena === "efectivo" || p.forma_pago_sena === "transferencia"
+            ? p.forma_pago_sena
+            : "transferencia";
+        const fpTot =
+          p.forma_pago_total === "efectivo" || p.forma_pago_total === "transferencia"
+            ? p.forma_pago_total
+            : "transferencia";
         set({
           editandoPedidoId: p.id,
           pedidoEditSnapshot: snapshotFromPedido(p),
@@ -125,7 +142,9 @@ export const useCartStore = create<CartState>()(
           senaLibreMonto,
           descRecGlobalTipo: g.descRecGlobalTipo,
           descRecGlobalModo: g.descRecGlobalModo,
-          descRecGlobalValor: g.descRecGlobalValor
+          descRecGlobalValor: g.descRecGlobalValor,
+          formaPagoSena: fpSena,
+          formaPagoTotal: fpTot
         });
       },
       setEstadoEdicion: (estadoEdicion) => set({ estadoEdicion }),
@@ -138,6 +157,8 @@ export const useCartStore = create<CartState>()(
       setDescRecGlobalModo: (descRecGlobalModo) => set({ descRecGlobalModo }),
       setDescRecGlobalValor: (descRecGlobalValor) =>
         set({ descRecGlobalValor }),
+      setFormaPagoSena: (formaPagoSena) => set({ formaPagoSena }),
+      setFormaPagoTotal: (formaPagoTotal) => set({ formaPagoTotal }),
 
       reset: () => set({ ...initialState }),
 
@@ -190,7 +211,9 @@ export const useCartStore = create<CartState>()(
         vendedorId: state.editandoPedidoId ? state.vendedorId : null,
         descRecGlobalTipo: state.descRecGlobalTipo,
         descRecGlobalModo: state.descRecGlobalModo,
-        descRecGlobalValor: state.descRecGlobalValor
+        descRecGlobalValor: state.descRecGlobalValor,
+        formaPagoSena: state.formaPagoSena,
+        formaPagoTotal: state.formaPagoTotal
       }),
       merge: (persisted, current) => {
         const merged = {
@@ -202,6 +225,18 @@ export const useCartStore = create<CartState>()(
           merged.fechaEntrega = "";
         }
         if (!merged.editandoPedidoId) merged.vendedorId = null;
+        if (
+          merged.formaPagoSena !== "efectivo" &&
+          merged.formaPagoSena !== "transferencia"
+        ) {
+          merged.formaPagoSena = "transferencia";
+        }
+        if (
+          merged.formaPagoTotal !== "efectivo" &&
+          merged.formaPagoTotal !== "transferencia"
+        ) {
+          merged.formaPagoTotal = "transferencia";
+        }
         return merged;
       }
     }

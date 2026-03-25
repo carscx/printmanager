@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/AuthContext";
 import { useCartStore } from "../store/useCartStore";
 import { usePedidos } from "../hooks/usePedidos";
 import { usePrecios } from "../hooks/usePrecios";
@@ -13,6 +13,7 @@ import { NumberStepper } from "../components/ui/NumberStepper";
 import { formatCurrency } from "../utils/formatters";
 import type { EstadoPedido, Pedido, PedidoItem } from "../types/pedido";
 import { cabeceraDesdeEstadoEdicion } from "../utils/pedidoCabeceraEdicion";
+import { aplicarFormaPagoCabecera } from "../utils/pedidoFormaPago";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
 import {
   labelAnillado,
@@ -528,11 +529,6 @@ export function NuevoPedidoPage() {
       estado: "pendiente",
       sena,
       tipo_pago: cart.tipoPago,
-      ...(sena > 0 && (cart.tipoPago === "sena_50" || cart.tipoPago === "sena_libre")
-        ? { forma_pago_sena: "transferencia" as const }
-        : sena > 0
-          ? { forma_pago_sena: null as null }
-          : {}),
       stock_descontado: false,
       entregado: false,
       fecha_pago: null
@@ -549,6 +545,8 @@ export function NuevoPedidoPage() {
     } else {
       cabecera = esPresupuesto ? cabeceraPresupuesto : cabeceraPedido;
     }
+
+    cabecera = aplicarFormaPagoCabecera(cabecera, cart, sena);
 
     // Asegurar que los ítems tengan los campos correctos (ya se guardan al agregar)
     const items = cart.items;

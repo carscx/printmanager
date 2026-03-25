@@ -16,12 +16,6 @@ export function cabeceraDesdeEstadoEdicion(
 ): Record<string, unknown> {
   const { senaFromCart, tipoPago, totalPedido, snap } = opts;
 
-  /** Seña distinta del total: siempre transferencia; pago total al crear → sin seña como depósito */
-  const formaSena =
-    tipoPago === "sena_50" || tipoPago === "sena_libre"
-      ? ({ forma_pago_sena: "transferencia" } as const)
-      : ({ forma_pago_sena: null } as const);
-
   if (est === "presupuesto") {
     // Agregar seña en edición = confirmar pedido (presupuesto → pendiente), no presupuesto con seña forzada a 0.
     if (senaFromCart > 0) {
@@ -30,7 +24,6 @@ export function cabeceraDesdeEstadoEdicion(
         modalidad: "pedido",
         estado: "pendiente",
         sena: senaFromCart,
-        ...formaSena,
         tipo_pago: tipoPago,
         entregado: false,
         fecha_pago: null,
@@ -43,7 +36,6 @@ export function cabeceraDesdeEstadoEdicion(
       modalidad: "presupuesto",
       estado: "presupuesto",
       sena: 0,
-      forma_pago_sena: null,
       tipo_pago: null,
       stock_descontado: false,
       entregado: false,
@@ -57,7 +49,6 @@ export function cabeceraDesdeEstadoEdicion(
       modalidad: "pedido",
       estado: "cancelado",
       sena: senaFromCart,
-      ...formaSena,
       tipo_pago: tipoPago,
       entregado: false,
       fecha_pago: null,
@@ -71,7 +62,6 @@ export function cabeceraDesdeEstadoEdicion(
       modalidad: "pedido",
       estado: "entregado",
       sena: totalPedido,
-      ...formaSena,
       tipo_pago: "pago_total",
       entregado: true,
       fecha_pago: snap.fecha_pago ?? new Date().toISOString(),
@@ -85,7 +75,6 @@ export function cabeceraDesdeEstadoEdicion(
       modalidad: "pedido",
       estado: "pagado",
       sena: totalPedido,
-      ...formaSena,
       tipo_pago: "pago_total",
       entregado: false,
       fecha_pago: null,
@@ -98,7 +87,6 @@ export function cabeceraDesdeEstadoEdicion(
     modalidad: "pedido",
     estado: est,
     sena: senaFromCart,
-    ...formaSena,
     tipo_pago: tipoPago,
     entregado: false,
     fecha_pago: null,

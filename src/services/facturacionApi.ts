@@ -23,6 +23,7 @@ const SELECT_PEDIDOS_FACTURACION = `
   id,
   numero_publico,
   fecha_pago,
+  forma_pago_total,
   created_at,
   total,
   total_pedido,

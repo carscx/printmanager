@@ -17,6 +17,12 @@ interface PedidoCardProps {
   onCobrarTotal: (p: Pedido) => void;
   onWA: (p: Pedido) => void;
   onDescargarControlPdf: (p: Pedido) => void;
+  /** Si se muestran selectores para corregir efectivo/transferencia desde el listado. */
+  puedeEditarFormaPago?: boolean;
+  onActualizarFormaPago?: (
+    id: string,
+    patch: Record<string, unknown>
+  ) => Promise<void>;
 }
 
 export function PedidoCard({
@@ -27,9 +33,12 @@ export function PedidoCard({
   onTransition,
   onCobrarTotal,
   onWA,
-  onDescargarControlPdf
+  onDescargarControlPdf,
+  puedeEditarFormaPago = false,
+  onActualizarFormaPago
 }: PedidoCardProps) {
   const [mostrarTodosLosItems, setMostrarTodosLosItems] = useState(false);
+  const [guardandoForma, setGuardandoForma] = useState(false);
   const estadoRaw = normalizarEstadoPedido(p.estado);
 
   const borderConfig: Record<EstadoPedido, string> = {
@@ -47,6 +56,8 @@ export function PedidoCard({
   const totalP = totalVentaPedido(p);
   const senaP = Number(p.sena ?? 0);
   const pagoTotal = totalP > 0 && senaP >= totalP;
+  const mostrarFormaTotal =
+    (pagoTotal && totalP > 0) || Boolean(p.forma_pago_total);
   const estaPagadoPorEstado = estadoRaw === "pagado" || estadoRaw === "entregado";
   const mostrarComprobante = isAdmin && (pagoTotal || estaPagadoPorEstado);
 
@@ -64,6 +75,23 @@ export function PedidoCard({
     p.numero_publico != null
       ? `${nombreCliente} #${p.numero_publico}`
       : nombreCliente;
+
+  const labelForma = (v: string | null | undefined) =>
+    v === "efectivo"
+      ? "Efectivo"
+      : v === "transferencia"
+        ? "Transferencia"
+        : "—";
+
+  const patchForma = async (patch: Record<string, unknown>) => {
+    if (!onActualizarFormaPago) return;
+    setGuardandoForma(true);
+    try {
+      await onActualizarFormaPago(p.id, patch);
+    } finally {
+      setGuardandoForma(false);
+    }
+  };
 
   const handleCopiarNumero = async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -236,16 +264,51 @@ export function PedidoCard({
                 {senaP > 0 ? `SEÑA: ${formatCurrency(senaP)}` : "SIN SEÑA"}
               </span>
             )}
-            {p.forma_pago_sena && senaP > 0 && senaP < totalP && (
-              <p className="text-[10px] font-bold text-slate-500">
-                Seña: {p.forma_pago_sena === "transferencia" ? "transferencia" : p.forma_pago_sena}
-              </p>
+            {senaP > 0 && senaP < totalP && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-[10px]">
+                <span className="font-bold text-slate-500">Seña:</span>
+                {puedeEditarFormaPago && onActualizarFormaPago ? (
+                  <select
+                    disabled={guardandoForma}
+                    value={p.forma_pago_sena ?? "transferencia"}
+                    onChange={(e) => {
+                      const v = e.target.value as "efectivo" | "transferencia";
+                      void patchForma({ forma_pago_sena: v });
+                    }}
+                    className="rounded-sm border border-slate-200 bg-white py-1 px-2 font-bold text-slate-700 text-[10px] max-w-[140px]"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                  </select>
+                ) : (
+                  <span className="font-bold text-slate-600">
+                    {labelForma(p.forma_pago_sena)}
+                  </span>
+                )}
+              </div>
             )}
-            {p.forma_pago_total && (
-              <p className="text-[10px] font-bold text-slate-500">
-                Cobro total:{" "}
-                {p.forma_pago_total === "efectivo" ? "efectivo" : "transferencia"}
-              </p>
+            {mostrarFormaTotal && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-[10px]">
+                <span className="font-bold text-slate-500">Pago total:</span>
+                {puedeEditarFormaPago && onActualizarFormaPago ? (
+                  <select
+                    disabled={guardandoForma}
+                    value={p.forma_pago_total ?? "transferencia"}
+                    onChange={(e) => {
+                      const v = e.target.value as "efectivo" | "transferencia";
+                      void patchForma({ forma_pago_total: v });
+                    }}
+                    className="rounded-sm border border-slate-200 bg-white py-1 px-2 font-bold text-slate-700 text-[10px] max-w-[140px]"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                  </select>
+                ) : (
+                  <span className="font-bold text-slate-600">
+                    {labelForma(p.forma_pago_total)}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

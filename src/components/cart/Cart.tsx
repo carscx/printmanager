@@ -51,7 +51,11 @@ export function Cart({
     descRecGlobalValor,
     setDescRecGlobalTipo,
     setDescRecGlobalModo,
-    setDescRecGlobalValor
+    setDescRecGlobalValor,
+    formaPagoSena,
+    formaPagoTotal,
+    setFormaPagoSena,
+    setFormaPagoTotal
   } = useCartStore();
 
   const removeItem = onRemoveItem ?? removeItemStore;
@@ -238,6 +242,72 @@ export function Cart({
                 placeholder="Monto de seña"
                 className="w-full p-3 bg-slate-800 rounded-sm text-white font-black text-center border border-slate-700 outline-none focus:border-blue-500"
               />
+            </div>
+          )}
+
+          {!esPresupuesto &&
+            (tipoPago === "sena_50" || tipoPago === "sena_libre") &&
+            sena > 0 && (
+              <div className="mb-3 space-y-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Forma de pago (seña)
+                </p>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setFormaPagoSena("efectivo")}
+                    className={`py-2 rounded-sm text-[9px] font-black uppercase ${
+                      formaPagoSena === "efectivo"
+                        ? "bg-white/15 text-white"
+                        : "bg-slate-800 text-slate-500"
+                    }`}
+                  >
+                    Efectivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormaPagoSena("transferencia")}
+                    className={`py-2 rounded-sm text-[9px] font-black uppercase ${
+                      formaPagoSena === "transferencia"
+                        ? "bg-white/15 text-white"
+                        : "bg-slate-800 text-slate-500"
+                    }`}
+                  >
+                    Transferencia
+                  </button>
+                </div>
+              </div>
+            )}
+
+          {!esPresupuesto && tipoPago === "pago_total" && sena > 0 && (
+            <div className="mb-3 space-y-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                Forma de pago (total)
+              </p>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFormaPagoTotal("efectivo")}
+                  className={`py-2 rounded-sm text-[9px] font-black uppercase ${
+                    formaPagoTotal === "efectivo"
+                      ? "bg-white/15 text-white"
+                      : "bg-slate-800 text-slate-500"
+                  }`}
+                >
+                  Efectivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormaPagoTotal("transferencia")}
+                  className={`py-2 rounded-sm text-[9px] font-black uppercase ${
+                    formaPagoTotal === "transferencia"
+                      ? "bg-white/15 text-white"
+                      : "bg-slate-800 text-slate-500"
+                  }`}
+                >
+                  Transferencia
+                </button>
+              </div>
             </div>
           )}
 

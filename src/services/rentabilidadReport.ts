@@ -28,6 +28,10 @@ export interface InsumoConsumoRank {
 
 export interface RentabilidadResultado {
   ingresosBrutos: number;
+  /** Misma regla que la vista: COALESCE(forma_pago_total, forma_pago_sena). */
+  ingresosTransferencia: number;
+  ingresosEfectivo: number;
+  ingresosSinForma: number;
   costoInsumos: number;
   comisionesVendedores: number;
   gananciaNeta: number;
@@ -69,6 +73,14 @@ function comisionesDesdePedidos(pedidos: Pedido[]): number {
   return pedidos.reduce((acc, p) => acc + Number(p.comision_monto ?? 0), 0);
 }
 
+/** Alineado con `v_estadisticas_diarias` (prioriza cobro total sobre seña). */
+function formaCobroPedido(p: Pedido): "transferencia" | "efectivo" | null {
+  const v = p.forma_pago_total ?? p.forma_pago_sena;
+  if (v === "transferencia") return "transferencia";
+  if (v === "efectivo") return "efectivo";
+  return null;
+}
+
 function costoPorItem(
   consumos: PedidoItemInsumo[]
 ): Map<string, number> {
@@ -92,6 +104,17 @@ export function calcularRentabilidad(
     (s, p) => s + totalVentaPedido(p),
     0
   );
+
+  let ingresosTransferencia = 0;
+  let ingresosEfectivo = 0;
+  let ingresosSinForma = 0;
+  for (const p of activos) {
+    const tv = totalVentaPedido(p);
+    const fc = formaCobroPedido(p);
+    if (fc === "transferencia") ingresosTransferencia += tv;
+    else if (fc === "efectivo") ingresosEfectivo += tv;
+    else ingresosSinForma += tv;
+  }
 
   const itemToPedido = new Map<string, string>();
   const pedidoById = new Map<string, Pedido>();
@@ -204,6 +227,9 @@ export function calcularRentabilidad(
 
   return {
     ingresosBrutos: Math.round(ingresosBrutos),
+    ingresosTransferencia: Math.round(ingresosTransferencia),
+    ingresosEfectivo: Math.round(ingresosEfectivo),
+    ingresosSinForma: Math.round(ingresosSinForma),
     costoInsumos: Math.round(costoInsumos),
     comisionesVendedores: Math.round(comisionesVendedores),
     gananciaNeta,

@@ -6,7 +6,7 @@ import type {
   MatchCriterioPlantilla
 } from "../types/whatsapp";
 import { ESTADO_DESTINO_LABELS, MATCH_CRITERIO_LABELS } from "../types/whatsapp";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/AuthContext";
 import { showToast } from "../components/ui/Toast";
 import { PlantillaFormSheet } from "../components/whatsapp/PlantillaFormSheet";
 import { useConfirmSheet, ConfirmSheet } from "../components/ui/ConfirmSheet";

@@ -18,6 +18,12 @@ import { showToast } from "../components/ui/Toast";
 import { EvolucionRentabilidadChart } from "../components/reportes/EvolucionRentabilidadChart";
 import { stockHumanoTexto } from "../utils/insumoStockHuman";
 import type { Pedido, PedidoItem } from "../types/pedido";
+import {
+  fetchGastosFijosActivos,
+  sumaMontosActivos,
+  sumaRetiroCategorias
+} from "../services/gastosFijosApi";
+import { gastosFijosDevengadosHastaHoy } from "../utils/financialMonth";
 
 type Preset = "hoy" | "semana" | "mes" | "custom";
 type Tab = "rentabilidad" | "descuentos";
@@ -57,6 +63,13 @@ const ReportesPage = () => {
   );
   const [serieVista, setSerieVista] = useState<SerieDiaria[]>([]);
   const [loadingVista, setLoadingVista] = useState(true);
+  const [snapshotFin, setSnapshotFin] = useState<{
+    ebitda: number;
+    retiro: number;
+    retiroCategorias: number;
+    totalGastosMes: number;
+    gastosDevengados: number;
+  } | null>(null);
 
   const rango = useMemo(() => {
     const now = new Date();
@@ -114,6 +127,40 @@ const ReportesPage = () => {
       cancelled = true;
     };
   }, [rangoAr.desde, rangoAr.hasta]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const hoy = toDateStringAR(new Date());
+        const [yy, mm] = hoy.split("-");
+        const desdeMes = `${yy}-${mm}-01`;
+        const [gastosRows, totMes] = await Promise.all([
+          fetchGastosFijosActivos(),
+          fetchTotalesOperacionRango(desdeMes, hoy)
+        ]);
+        if (cancelled) return;
+        const totalGastosMes = sumaMontosActivos(gastosRows);
+        const retiroCategorias = sumaRetiroCategorias(gastosRows);
+        const gastosDevengados = gastosFijosDevengadosHastaHoy(totalGastosMes);
+        const ebitda = totMes.gananciaNeta - gastosDevengados;
+        const retiro = ebitda >= retiroCategorias ? retiroCategorias : 0;
+        setSnapshotFin({
+          ebitda,
+          retiro,
+          retiroCategorias,
+          totalGastosMes,
+          gastosDevengados
+        });
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setSnapshotFin(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadDescuentos = useCallback(async () => {
     setLoadingDesc(true);
@@ -197,7 +244,7 @@ const ReportesPage = () => {
         </h1>
         <p className="text-xs text-slate-400 font-bold mt-1">
           Totales desde <code className="text-slate-500">v_estadisticas_diarias</code>{" "}
-          (AR)
+          (AR), con desglose transferencia / efectivo por pedido.
         </p>
       </header>
 
@@ -291,17 +338,75 @@ const ReportesPage = () => {
       ) : totalesVista ? (
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-sm p-6 shadow-lg border border-slate-700/50">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-            Total facturado (período)
+            Ingresos operativos (período)
           </p>
           <p className="text-3xl sm:text-4xl font-black tracking-tight">
             {formatCurrency(totalesVista.totalIngresos)}
           </p>
-          <p className="text-[10px] text-slate-500 mt-2 font-semibold">
-            Suma de <span className="text-slate-400">total_ingresos</span> por día
-            · pedidos señado, pagado, listo o entregado
-          </p>
+          <div className="text-[10px] text-slate-400 mt-3 space-y-1 font-semibold leading-relaxed">
+            <p>
+              Transferencia{" "}
+              <span className="text-emerald-300 tabular-nums">
+                {formatCurrency(totalesVista.ingresosTransferencia)}
+              </span>
+              {" · "}
+              Efectivo{" "}
+              <span className="text-amber-200/90 tabular-nums">
+                {formatCurrency(totalesVista.ingresosEfectivo)}
+              </span>
+              {totalesVista.ingresosSinForma > 0 && (
+                <>
+                  {" · "}
+                  Sin forma{" "}
+                  <span className="text-slate-300 tabular-nums">
+                    {formatCurrency(totalesVista.ingresosSinForma)}
+                  </span>
+                </>
+              )}
+            </p>
+            <p className="text-slate-500">
+              Suma de <span className="text-slate-400">total_ingresos</span> por día
+              (pendiente / listo / pagado / entregado). La facturación ARCA usa solo
+              pedidos entregados con cobro total en transferencia (pantalla Facturación).
+            </p>
+          </div>
         </div>
       ) : null}
+
+      {snapshotFin && (
+        <div className="rounded-sm border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5 shadow-sm space-y-2">
+          <h2 className="text-[10px] font-black text-violet-700 uppercase tracking-widest">
+            Retiro sugerido (mes en curso)
+          </h2>
+          <p className="text-[10px] text-slate-600 font-semibold leading-relaxed">
+            Basado en ganancia real (EBITDA): ganancia operativa del mes (
+            <code className="text-slate-500">v_estadisticas_diarias</code>) menos
+            gastos fijos devengados. El retiro propuesto suma solo{" "}
+            <strong>amortización</strong> y <strong>sueldo personal</strong> activos,
+            si el EBITDA del mes los cubre.
+          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+            <span className="text-sm font-bold text-slate-600">
+              Retiro sugerido
+            </span>
+            <span className="text-2xl font-black text-violet-900 tabular-nums">
+              {formatCurrency(snapshotFin.retiro)}
+            </span>
+          </div>
+          <div className="text-[10px] text-slate-500 font-semibold space-y-0.5">
+            <p>
+              Amortización + sueldos (objetivo):{" "}
+              {formatCurrency(snapshotFin.retiroCategorias)} · EBITDA mes:{" "}
+              {formatCurrency(snapshotFin.ebitda)}
+            </p>
+            {snapshotFin.retiro === 0 && snapshotFin.retiroCategorias > 0 && (
+              <p className="text-amber-700">
+                La ganancia real del mes aún no alcanza para cubrir ese retiro.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === "rentabilidad" && (
         <>
@@ -334,6 +439,26 @@ const ReportesPage = () => {
                   value={formatCurrency(rent.totalDescuentosOtorgados)}
                 />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <MiniKpi
+                  label="Ingresos transferencia"
+                  value={formatCurrency(rent.ingresosTransferencia)}
+                />
+                <MiniKpi
+                  label="Ingresos efectivo"
+                  value={formatCurrency(rent.ingresosEfectivo)}
+                />
+                <MiniKpi
+                  label="Sin forma registrada"
+                  value={formatCurrency(rent.ingresosSinForma)}
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 font-semibold px-1">
+                Clasificación por pedido:{" "}
+                <code className="text-slate-600">COALESCE(forma_pago_total, forma_pago_sena)</code>.
+                Facturación ARCA: solo entregados con cobro total en transferencia.
+              </p>
 
               <div className="bg-white rounded-sm border border-slate-100 p-4 shadow-sm">
                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
@@ -580,9 +705,29 @@ function BalanceOperacion({ t }: { t: TotalesOperacion }) {
       </p>
       <div className="space-y-2 text-sm">
         <div className="flex justify-between font-bold text-slate-800">
-          <span>Total facturado</span>
+          <span>Total ingresos</span>
           <span>{formatCurrency(t.totalIngresos)}</span>
         </div>
+        <div className="flex justify-between text-xs font-semibold text-slate-600 border-b border-slate-100 pb-2">
+          <span>· Transferencia</span>
+          <span className="tabular-nums">
+            {formatCurrency(t.ingresosTransferencia)}
+          </span>
+        </div>
+        <div className="flex justify-between text-xs font-semibold text-slate-600">
+          <span>· Efectivo</span>
+          <span className="tabular-nums">
+            {formatCurrency(t.ingresosEfectivo)}
+          </span>
+        </div>
+        {t.ingresosSinForma > 0 && (
+          <div className="flex justify-between text-xs font-semibold text-slate-500">
+            <span>· Sin forma</span>
+            <span className="tabular-nums">
+              {formatCurrency(t.ingresosSinForma)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-red-600">
           <span>− Costo insumos</span>
           <span>−{formatCurrency(t.totalInsumos)}</span>

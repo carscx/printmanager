@@ -5,6 +5,9 @@ import { toDateStringAR } from "../utils/dateAr";
 
 export interface TotalesOperacion {
   totalIngresos: number;
+  ingresosTransferencia: number;
+  ingresosEfectivo: number;
+  ingresosSinForma: number;
   totalInsumos: number;
   totalComisiones: number;
   gananciaNeta: number;
@@ -27,17 +30,26 @@ export async function fetchTotalesOperacionRango(
 ): Promise<TotalesOperacion> {
   const rows = await fetchEstadisticasDiariasRango(desde, hasta);
   let totalIngresos = 0;
+  let ingresosTransferencia = 0;
+  let ingresosEfectivo = 0;
+  let ingresosSinForma = 0;
   let totalInsumos = 0;
   let totalComisiones = 0;
   let gananciaNeta = 0;
   for (const r of rows) {
     totalIngresos += Number(r.total_ingresos);
+    ingresosTransferencia += Number(r.ingresos_transferencia ?? 0);
+    ingresosEfectivo += Number(r.ingresos_efectivo ?? 0);
+    ingresosSinForma += Number(r.ingresos_sin_forma ?? 0);
     totalInsumos += Number(r.total_insumos);
     totalComisiones += Number(r.total_comisiones);
     gananciaNeta += Number(r.ganancia_neta);
   }
   return {
     totalIngresos,
+    ingresosTransferencia,
+    ingresosEfectivo,
+    ingresosSinForma,
     totalInsumos,
     totalComisiones,
     gananciaNeta

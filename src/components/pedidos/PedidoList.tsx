@@ -10,6 +10,11 @@ interface PedidoListProps {
   onCobrarTotal: (p: Pedido) => void;
   onWA: (p: Pedido) => void;
   onDescargarControlPdf: (p: Pedido) => void;
+  puedeEditarFormaPago?: boolean;
+  onActualizarFormaPago?: (
+    id: string,
+    patch: Record<string, unknown>
+  ) => Promise<void>;
 }
 
 export function PedidoList({
@@ -20,7 +25,9 @@ export function PedidoList({
   onTransition,
   onCobrarTotal,
   onWA,
-  onDescargarControlPdf
+  onDescargarControlPdf,
+  puedeEditarFormaPago,
+  onActualizarFormaPago
 }: PedidoListProps) {
   if (pedidos.length === 0) {
     return (
@@ -43,6 +50,8 @@ export function PedidoList({
           onCobrarTotal={onCobrarTotal}
           onWA={onWA}
           onDescargarControlPdf={onDescargarControlPdf}
+          puedeEditarFormaPago={puedeEditarFormaPago}
+          onActualizarFormaPago={onActualizarFormaPago}
         />
       ))}
     </div>

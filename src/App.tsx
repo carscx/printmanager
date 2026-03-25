@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { Header } from "./components/layout/Header";
 import { BottomNav } from "./components/layout/BottomNav";
@@ -19,20 +20,49 @@ import ReportesPage from "./pages/ReportesPage";
 import { WhatsappPreviewPage } from "./pages/WhatsappPreviewPage";
 import { PlantillasWhatsappPage } from "./pages/PlantillasWhatsappPage";
 import { FacturacionPage } from "./pages/FacturacionPage";
-import { useAuth } from "./hooks/useAuth";
+import { GastosFijosPage } from "./pages/GastosFijosPage";
+import { useAuth } from "./hooks/AuthContext";
 import { OfflineBanner } from "./components/ui/OfflineBanner";
 import ReloadPrompt from "./components/ReloadPrompt";
 import { NonOperadorRoute } from "./components/layout/NonOperadorRoute";
 import type { AuthUser } from "./types/auth";
 
+function LoginWithHomeRedirect({
+  login,
+  onLoginSuccess
+}: {
+  login: (email: string, password: string) => Promise<unknown>;
+  onLoginSuccess: () => void;
+}) {
+  const handleLogin = async (email: string, password: string) => {
+    await login(email, password);
+    onLoginSuccess();
+  };
+  return <LoginPage onLogin={handleLogin} />;
+}
+
 function AuthenticatedShell({
   user,
-  onLogout
+  onLogout,
+  postLoginRedirect,
+  onConsumePostLoginRedirect
 }: {
   user: AuthUser;
   onLogout: () => void;
+  postLoginRedirect: boolean;
+  onConsumePostLoginRedirect: () => void;
 }) {
   const navigate = useNavigate();
+
+  useLayoutEffect(() => {
+    if (!postLoginRedirect) return;
+    if (user.role === "admin") {
+      navigate("/dashboard", { replace: true });
+    } else {
+      navigate("/pedidos", { replace: true });
+    }
+    onConsumePostLoginRedirect();
+  }, [postLoginRedirect, navigate, user.role, onConsumePostLoginRedirect]);
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20 lg:pb-6 font-sans text-slate-900">
@@ -149,6 +179,16 @@ function AuthenticatedShell({
                 }
               />
               <Route
+                path="/admin/gastos"
+                element={
+                  <ProtectedRoute user={user}>
+                    <AdminRoute>
+                      <GastosFijosPage />
+                    </AdminRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/facturacion-arca"
                 element={<Navigate to="/facturacion" replace />}
               />
@@ -188,10 +228,17 @@ function AuthenticatedShell({
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
+  const [postLoginRedirect, setPostLoginRedirect] = useState(false);
 
-  const handleLogin = async (email: string, password: string) => {
-    await login(email, password);
-  };
+  const onLoginSuccess = useCallback(() => setPostLoginRedirect(true), []);
+  const onConsumePostLoginRedirect = useCallback(
+    () => setPostLoginRedirect(false),
+    []
+  );
+
+  useEffect(() => {
+    if (!user) setPostLoginRedirect(false);
+  }, [user]);
 
   if (authLoading) {
     return (
@@ -213,14 +260,27 @@ export default function App() {
         <>
           <OfflineBanner />
           <Routes>
-            <Route path="*" element={<LoginPage onLogin={handleLogin} />} />
+            <Route
+              path="*"
+              element={
+                <LoginWithHomeRedirect
+                  login={login}
+                  onLoginSuccess={onLoginSuccess}
+                />
+              }
+            />
           </Routes>
           <ToastContainer />
         </>
       ) : (
         <>
           <OfflineBanner />
-          <AuthenticatedShell user={user} onLogout={logout} />
+          <AuthenticatedShell
+            user={user}
+            onLogout={logout}
+            postLoginRedirect={postLoginRedirect}
+            onConsumePostLoginRedirect={onConsumePostLoginRedirect}
+          />
         </>
       )}
     </BrowserRouter>

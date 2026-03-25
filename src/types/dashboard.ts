@@ -2,6 +2,12 @@
 export interface EstadisticaDiaria {
   dia: string;
   total_ingresos: number;
+  /** Suma ventas clasificadas como transferencia (base ARCA / facturación). */
+  ingresos_transferencia: number;
+  /** Suma ventas clasificadas como efectivo (no entran en facturación ARCA). */
+  ingresos_efectivo: number;
+  /** Pedidos sin forma de cobro registrada. */
+  ingresos_sin_forma: number;
   total_insumos: number;
   total_comisiones: number;
   ganancia_neta: number;

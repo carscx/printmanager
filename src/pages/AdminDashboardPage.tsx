@@ -28,6 +28,12 @@ import { useStockBajo } from "../hooks/useInsumos";
 import { StockAlertasCriticas } from "../components/dashboard/StockAlertasCriticas";
 import { formatCurrency } from "../utils/formatters";
 import { toDateStringAR } from "../utils/dateAr";
+import { PuntoDeEquilibrioCard } from "../components/dashboard/PuntoDeEquilibrioCard";
+import {
+  fetchGastosFijosActivos,
+  sumaMontosActivos
+} from "../services/gastosFijosApi";
+import { gastosFijosDevengadosHastaHoy } from "../utils/financialMonth";
 
 function ultimos7DiasRango(): { desde: string; hasta: string } {
   const hasta = new Date();
@@ -43,6 +49,9 @@ function rellenarDias(
 ): {
   dia: string;
   total_ingresos: number;
+  ingresos_transferencia: number;
+  ingresos_efectivo: number;
+  ingresos_sin_forma: number;
   total_insumos: number;
   total_comisiones: number;
 }[] {
@@ -50,6 +59,9 @@ function rellenarDias(
   const out: {
     dia: string;
     total_ingresos: number;
+    ingresos_transferencia: number;
+    ingresos_efectivo: number;
+    ingresos_sin_forma: number;
     total_insumos: number;
     total_comisiones: number;
   }[] = [];
@@ -61,6 +73,11 @@ function rellenarDias(
     out.push({
       dia: key.slice(5),
       total_ingresos: row ? Number(row.total_ingresos) : 0,
+      ingresos_transferencia: row
+        ? Number(row.ingresos_transferencia ?? 0)
+        : 0,
+      ingresos_efectivo: row ? Number(row.ingresos_efectivo ?? 0) : 0,
+      ingresos_sin_forma: row ? Number(row.ingresos_sin_forma ?? 0) : 0,
       total_insumos: row ? Number(row.total_insumos) : 0,
       total_comisiones: row
         ? Number((row as EstadisticaDiaria).total_comisiones ?? 0)
@@ -83,6 +100,9 @@ export function AdminDashboardPage() {
   const [filtro, setFiltro] = useState<FiltroDashboardTiempo>("hoy");
   const [kpis, setKpis] = useState({
     totalFacturado: 0,
+    ingresosTransferencia: 0,
+    ingresosEfectivo: 0,
+    ingresosSinForma: 0,
     costoInsumos: 0,
     costoComision: 0,
     gananciaNeta: 0,
@@ -94,6 +114,9 @@ export function AdminDashboardPage() {
     {
       dia: string;
       total_ingresos: number;
+      ingresos_transferencia: number;
+      ingresos_efectivo: number;
+      ingresos_sin_forma: number;
       total_insumos: number;
       total_comisiones: number;
     }[]
@@ -102,6 +125,8 @@ export function AdminDashboardPage() {
   const [ranking, setRanking] = useState<RankingVendedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [totalGastosFijosMes, setTotalGastosFijosMes] = useState(0);
+  const [margenAcumuladoMes, setMargenAcumuladoMes] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -110,6 +135,9 @@ export function AdminDashboardPage() {
       const k = await dashboardApi.fetchKpisRango(filtro);
       setKpis({
         totalFacturado: k.totalFacturado,
+        ingresosTransferencia: k.ingresosTransferencia,
+        ingresosEfectivo: k.ingresosEfectivo,
+        ingresosSinForma: k.ingresosSinForma,
         costoInsumos: k.costoInsumos,
         costoComision: k.costoComision,
         gananciaNeta: k.gananciaNeta,
@@ -123,11 +151,18 @@ export function AdminDashboardPage() {
       setSerie7(rellenarDias(rows7, d7, h7));
 
       const { desde: ft, hasta: ht } = dashboardApi.rangoFiltro(filtro);
-      const [top, rank, insList] = await Promise.all([
+      const { desde: mesDesde, hasta: mesHasta } = dashboardApi.rangoFiltro("mes");
+      const [top, rank, insList, gastosRows, statsMes] = await Promise.all([
         dashboardApi.fetchTopProductos(ft, ht, 3),
         dashboardApi.fetchRendimientoVendedores(),
-        insumosApi.fetchAll(true).catch(() => [] as Insumo[])
+        insumosApi.fetchAll(true).catch(() => [] as Insumo[]),
+        fetchGastosFijosActivos().catch(() => []),
+        dashboardApi.fetchEstadisticasDiarias(mesDesde, mesHasta)
       ]);
+      setTotalGastosFijosMes(sumaMontosActivos(gastosRows));
+      setMargenAcumuladoMes(
+        statsMes.reduce((s, r) => s + Number(r.ganancia_neta ?? 0), 0)
+      );
       setTop3(top);
       setRanking(rank);
       setInsumosActivos(insList);
@@ -146,11 +181,23 @@ export function AdminDashboardPage() {
 
   const periodoVentas = useMemo(() => FILTRO_LABEL[filtro], [filtro]);
 
+  const gastosDevengadosMes = useMemo(
+    () => gastosFijosDevengadosHastaHoy(totalGastosFijosMes),
+    [totalGastosFijosMes]
+  );
+
+  const gananciaRealEbitda = useMemo(
+    () => kpis.gananciaNeta - gastosDevengadosMes,
+    [kpis.gananciaNeta, gastosDevengadosMes]
+  );
+
   const chartData = useMemo(
     () =>
       serie7.map((s) => ({
         dia: s.dia,
-        facturacion: s.total_ingresos,
+        ingreso_transf: s.ingresos_transferencia,
+        ingreso_efectivo: s.ingresos_efectivo,
+        ingreso_sin_forma: s.ingresos_sin_forma,
         costo_total: s.total_insumos + s.total_comisiones
       })),
     [serie7]
@@ -165,6 +212,14 @@ export function AdminDashboardPage() {
           </h1>
           <p className="text-xs text-slate-500 font-semibold">
             Ingresos − insumos − comisiones · {periodoVentas}
+          </p>
+          <p className="text-[10px] text-slate-400 font-semibold mt-0.5 max-w-md">
+            Desglose por forma de cobro (transferencia / efectivo)
+            coincide con la vista diaria.{" "}
+            <span className="text-slate-500">
+              Facturación ARCA (pantalla Facturación): solo entregados con cobro
+              total en transferencia.
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -193,12 +248,42 @@ export function AdminDashboardPage() {
 
       <StockAlertasCriticas insumos={insumosActivos} alertas={stockAlertas} />
 
+      <PuntoDeEquilibrioCard
+        totalGastosFijosMes={totalGastosFijosMes}
+        margenAcumuladoMes={margenAcumuladoMes}
+        loading={loading}
+      />
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KpiCard
           title={`Ventas (${periodoVentas})`}
           value={formatCurrency(kpis.totalFacturado)}
+          sub={
+            kpis.totalFacturado > 0
+              ? `Transf. ${formatCurrency(kpis.ingresosTransferencia)} · Efect. ${formatCurrency(kpis.ingresosEfectivo)}` +
+                (kpis.ingresosSinForma > 0
+                  ? ` · Sin dato ${formatCurrency(kpis.ingresosSinForma)}`
+                  : "")
+              : undefined
+          }
           icon="fa-arrow-trend-up"
           tone="blue"
+          loading={loading}
+        />
+        <KpiCard
+          title={`Transferencia (${periodoVentas})`}
+          sub="Base para facturación electrónica (pedidos con forma registrada)"
+          value={formatCurrency(kpis.ingresosTransferencia)}
+          icon="fa-building-columns"
+          tone="violet"
+          loading={loading}
+        />
+        <KpiCard
+          title={`Efectivo (${periodoVentas})`}
+          sub="No entra en export ARCA"
+          value={formatCurrency(kpis.ingresosEfectivo)}
+          icon="fa-money-bill-wave"
+          tone="amber"
           loading={loading}
         />
         <KpiCard
@@ -217,11 +302,19 @@ export function AdminDashboardPage() {
           loading={loading}
         />
         <KpiCard
-          title={`Ganancia neta (${periodoVentas})`}
+          title={`Ganancia operativa (${periodoVentas})`}
           value={formatCurrency(kpis.gananciaNeta)}
           sub={`Ingresos − insumos − comisiones · Margen ${kpis.pctMargen.toFixed(1)}%`}
           icon="fa-sack-dollar"
           tone="emerald"
+          loading={loading}
+        />
+        <KpiCard
+          title="Ganancia real (EBITDA)"
+          value={formatCurrency(gananciaRealEbitda)}
+          sub={`Operativa − gastos fijos devengados (${formatCurrency(gastosDevengadosMes)} del mes)`}
+          icon="fa-balance-scale"
+          tone="slate"
           loading={loading}
         />
         <KpiCard
@@ -243,7 +336,7 @@ export function AdminDashboardPage() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 rounded-sm border border-slate-100 bg-white p-4 shadow-sm">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-            Facturación vs costo total (insumos + comisiones) · últimos 7 días
+            Ingresos por forma de cobro vs costo total · últimos 7 días
           </h2>
           <div className="h-64 w-full min-h-[16rem]">
             {loading ? (
@@ -271,13 +364,29 @@ export function AdminDashboardPage() {
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar
-                    dataKey="facturacion"
-                    name="Facturación total"
+                    dataKey="ingreso_transf"
+                    stackId="ing"
+                    name="Transferencia"
                     fill="#2563eb"
+                    radius={[0, 0, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="ingreso_efectivo"
+                    stackId="ing"
+                    name="Efectivo"
+                    fill="#ca8a04"
+                    radius={[0, 0, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="ingreso_sin_forma"
+                    stackId="ing"
+                    name="Sin forma"
+                    fill="#94a3b8"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="costo_total"
+                    stackId="cost"
                     name="Costo total (insumos + comisiones)"
                     fill="#64748b"
                     radius={[4, 4, 0, 0]}
@@ -389,6 +498,14 @@ export function AdminDashboardPage() {
         >
           <i className="fas fa-chart-line mr-2" />
           Reportes
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/gastos")}
+          className="px-4 py-3 rounded-sm border border-slate-200 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50"
+        >
+          <i className="fas fa-receipt mr-2" />
+          Gastos fijos
         </button>
       </div>
     </section>

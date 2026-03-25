@@ -37,7 +37,8 @@ export function buildNavItems(isAdmin: boolean, role: UserRole): NavItem[] {
       { path: "/dashboard", icon: "fa-home", label: "Inicio" },
       { path: "/pedidos", icon: "fa-clipboard-list", label: "Pedidos" },
       ...tail,
-      facturacion
+      facturacion,
+      { path: "/admin/gastos", icon: "fa-receipt", label: "Gastos fijos" }
     ];
   }
   /** Vendedor: misma sección que admin (no es el listado de pedidos). Operador no la ve. */
@@ -60,5 +61,6 @@ export function isNavItemActive(path: string, pathname: string): boolean {
   }
   if (path === "/") return pathname === "/";
   if (path === "/facturacion") return pathname === "/facturacion";
+  if (path === "/admin/gastos") return pathname === "/admin/gastos";
   return pathname.startsWith(path);
 }

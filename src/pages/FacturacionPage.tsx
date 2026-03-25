@@ -146,10 +146,19 @@ export function FacturacionPage() {
         <h1 className="text-xl font-black uppercase tracking-tighter text-slate-900">
           Facturación
         </h1>
-        <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">
-          Cobro total por transferencia, pedidos entregados y pendientes de facturar en el rango.
-          El efectivo no se incluye.
-        </p>
+        <div className="text-xs text-slate-500 font-medium mt-2 leading-relaxed space-y-1.5">
+          <p>
+            Condiciones simultáneas: estado entregado, no facturado, cobro total
+            registrado como transferencia, fecha de pago definida y dentro del
+            rango. El efectivo no entra; pedidos en otro estado tampoco.
+          </p>
+          <p className="text-[10px] text-slate-400">
+            Diagnóstico en BD: ejecutá en Supabase el script{" "}
+            <code className="bg-slate-100 px-1 rounded text-slate-600">
+              sql/42_diagnostico_facturacion_pedidos.sql
+            </code>
+          </p>
+        </div>
       </header>
 
       <div className="rounded-sm border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
@@ -226,6 +235,7 @@ export function FacturacionPage() {
                   <tr>
                     <th className="py-2 pl-3 pr-2 text-left">Pedido</th>
                     <th className="py-2 px-2 text-right">Importe</th>
+                    <th className="py-2 px-2 text-center">Forma</th>
                     <th className="py-2 pl-2 pr-3 text-right">Fecha pago</th>
                   </tr>
                 </thead>
@@ -237,6 +247,11 @@ export function FacturacionPage() {
                       </td>
                       <td className="py-2 px-2 text-right font-bold tabular-nums text-slate-900">
                         {formatCurrency(totalVentaPedido(p))}
+                      </td>
+                      <td className="py-2 px-2 text-center font-bold text-emerald-800 whitespace-nowrap">
+                        {p.forma_pago_total === "transferencia"
+                          ? "Transferencia"
+                          : "—"}
                       </td>
                       <td className="py-2 pl-2 pr-3 text-right text-slate-500 whitespace-nowrap">
                         {fechaPagoCorta(p)}

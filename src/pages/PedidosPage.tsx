@@ -17,7 +17,7 @@ import { normalizarEstadoPedido } from "../utils/pedidoEstado";
 import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 import { pedidosToCSV } from "../utils/pedidosCsv";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/AuthContext";
 import {
   descargarPedidoControlPdf,
   type FormaPagoComprobante
@@ -46,7 +46,7 @@ function toISO(d: Date) {
 export function PedidosPage() {
   const navigate = useNavigate();
   const { borrar } = usePedidos();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [total, setTotal] = useState(0);
@@ -55,7 +55,8 @@ export function PedidosPage() {
   const [datePreset, setDatePreset] = useState<DatePreset>("todo");
   const [fromCustom, setFromCustom] = useState("");
   const [toCustom, setToCustom] = useState("");
-  const [estado, setEstado] = useState<string>("todos");
+  /** Por defecto oculta pagado y entregado (filtro `activos` en API). */
+  const [estado, setEstado] = useState<string>("activos");
   const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo>("todos");
   const [cobranza, setCobranza] = useState<CobranzaFiltro>("todos");
   /** Texto en el input (no dispara carga hasta pulsar Buscar). */
@@ -95,7 +96,11 @@ export function PedidosPage() {
   const estadoOpts = useMemo(
     () =>
       [
-        { value: "todos", label: "Todos" },
+        {
+          value: "activos",
+          label: "Activos (sin pagado ni entregado)"
+        },
+        { value: "todos", label: "Todos los estados" },
         { value: "presupuesto", label: "Presupuesto" },
         { value: "pendiente", label: "Pendiente" },
         { value: "listo", label: "Listo" },
@@ -181,7 +186,7 @@ export function PedidosPage() {
     setDatePreset("todo");
     setFromCustom("");
     setToCustom("");
-    setEstado("todos");
+    setEstado("activos");
     setTipoTrabajo("todos");
     setCobranza("todos");
     setBusquedaInput("");
@@ -229,6 +234,22 @@ export function PedidosPage() {
   const refresh = useCallback(async () => {
     await load();
   }, [load]);
+
+  const puedeEditarFormaPago = user?.role !== "operador";
+
+  const handleActualizarFormaPago = async (
+    id: string,
+    patch: Record<string, unknown>
+  ) => {
+    try {
+      await api.updatePedidoPatch(id, patch);
+      showToast("FORMA DE PAGO ACTUALIZADA");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      showToast("ERROR AL ACTUALIZAR LA FORMA DE PAGO", "error");
+    }
+  };
 
   const handleBorrar = (id: string) => {
     abrirConfirm(
@@ -652,6 +673,8 @@ export function PedidosPage() {
             onCobrarTotal={handleCobrarTotal}
             onWA={handleWA}
             onDescargarControlPdf={handleDescargarControlPdf}
+            puedeEditarFormaPago={puedeEditarFormaPago}
+            onActualizarFormaPago={handleActualizarFormaPago}
           />
         )}
       </div>

@@ -12,6 +12,10 @@ interface ConfigRow {
 export type HistorialFiltros = {
   fromDate?: string | null;
   toDate?: string | null;
+  /**
+   * Estado exacto (`presupuesto`, `pendiente`, …) o `activos`: excluye `pagado` y
+   * `entregado` para ver trabajo abierto. `null` = sin filtro (todos).
+   */
   estado?: string | null;
   /**
    * Búsqueda por nombre de cliente (ilike).
@@ -29,6 +33,15 @@ function esSoloNumeroPedido(raw: string): boolean {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyEstadoHistorial(query: any, estado: string | null | undefined) {
+  if (!estado) return query;
+  if (estado === "activos") {
+    return query.not("estado", "in", "(pagado,entregado)");
+  }
+  return query.eq("estado", estado);
+}
+
 function applyBusquedaClientePedido(query: any, raw: string | null | undefined) {
   const q = (raw || "").trim();
   if (!q) return query;
@@ -159,7 +172,7 @@ export const api = {
     // Filtros principales
     if (fromDate) query = query.gte("created_at", fromDate);
     if (toDate) query = query.lte("created_at", toDate);
-    if (estado) query = query.eq("estado", estado);
+    query = applyEstadoHistorial(query, estado);
     query = applyBusquedaClientePedido(query, busquedaClientePedido);
 
     // Tipo de trabajo: basado en items embebidos (filtrado por existencia)
@@ -195,7 +208,7 @@ export const api = {
         // Reaplicar filtros previos sobre esta query reconstruida
         if (fromDate) query = query.gte("created_at", fromDate);
         if (toDate) query = query.lte("created_at", toDate);
-        if (estado) query = query.eq("estado", estado);
+        query = applyEstadoHistorial(query, estado);
         query = applyBusquedaClientePedido(query, busquedaClientePedido);
         if (tipoTrabajo === "bn") {
           query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
@@ -395,19 +408,18 @@ export const api = {
     }
 
     if (stagingPedido) {
-      const senaN = Number(cabecera.sena ?? 0);
-      const tp = String(cabecera.tipo_pago ?? "");
       const { error: uErr } = await sb
         .from("pedidos")
         .update({
           modalidad: "pedido",
           estado: "pendiente",
           sena: cabecera.sena,
-          ...(senaN > 0 && (tp === "sena_50" || tp === "sena_libre")
-            ? { forma_pago_sena: "transferencia" }
-            : senaN > 0
-              ? { forma_pago_sena: null }
-              : {}),
+          forma_pago_sena: (cabecera.forma_pago_sena ?? null) as
+            | string
+            | null,
+          forma_pago_total: (cabecera.forma_pago_total ?? null) as
+            | string
+            | null,
           tipo_pago: cabecera.tipo_pago,
           total: cabecera.total,
           total_pedido: cabecera.total_pedido,

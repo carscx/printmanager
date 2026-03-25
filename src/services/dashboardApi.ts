@@ -8,13 +8,16 @@ import type {
 
 /** Columnas expuestas por `v_estadisticas_diarias` (PostgREST: nombre de columna = `dia`). */
 const V_ESTADISTICAS_DIARIAS_SELECT =
-  "dia,total_ingresos,total_insumos,total_comisiones,ganancia_neta,pct_margen_real";
+  "dia,total_ingresos,ingresos_transferencia,ingresos_efectivo,ingresos_sin_forma,total_insumos,total_comisiones,ganancia_neta,pct_margen_real";
 
 /** Normaliza filas de `v_estadisticas_diarias` (nombres Épica 4 / legado). */
 function mapEstadisticaRow(row: Record<string, unknown>): EstadisticaDiaria {
   return {
     dia: String(row.dia ?? row.fecha ?? ""),
     total_ingresos: Number(row.total_ingresos ?? row.total_facturado ?? 0),
+    ingresos_transferencia: Number(row.ingresos_transferencia ?? 0),
+    ingresos_efectivo: Number(row.ingresos_efectivo ?? 0),
+    ingresos_sin_forma: Number(row.ingresos_sin_forma ?? 0),
     total_insumos: Number(row.total_insumos ?? row.costo_insumos_total ?? 0),
     total_comisiones: Number(
       row.total_comisiones ?? row.costo_comision_total ?? 0
@@ -129,6 +132,9 @@ export const dashboardApi = {
    */
   async fetchKpisRango(filtro: FiltroDashboardTiempo): Promise<{
     totalFacturado: number;
+    ingresosTransferencia: number;
+    ingresosEfectivo: number;
+    ingresosSinForma: number;
     costoInsumos: number;
     costoComision: number;
     gananciaNeta: number;
@@ -137,6 +143,9 @@ export const dashboardApi = {
     const { desde, hasta } = rangoFiltro(filtro);
     const rows = await this.fetchEstadisticasDiarias(desde, hasta);
     let totalFacturado = 0;
+    let ingresosTransferencia = 0;
+    let ingresosEfectivo = 0;
+    let ingresosSinForma = 0;
     let costoInsumos = 0;
     let costoComision = 0;
     let sumGananciaNeta = 0;
@@ -144,6 +153,9 @@ export const dashboardApi = {
     for (const r of rows) {
       const row = r as EstadisticaDiaria;
       totalFacturado += Number(row.total_ingresos);
+      ingresosTransferencia += Number(row.ingresos_transferencia ?? 0);
+      ingresosEfectivo += Number(row.ingresos_efectivo ?? 0);
+      ingresosSinForma += Number(row.ingresos_sin_forma ?? 0);
       costoInsumos += Number(row.total_insumos);
       costoComision += Number(row.total_comisiones ?? 0);
       const gn = row.ganancia_neta;
@@ -160,6 +172,9 @@ export const dashboardApi = {
       totalFacturado > 0 ? (gananciaNeta / totalFacturado) * 100 : 0;
     return {
       totalFacturado,
+      ingresosTransferencia,
+      ingresosEfectivo,
+      ingresosSinForma,
       costoInsumos,
       costoComision,
       gananciaNeta,

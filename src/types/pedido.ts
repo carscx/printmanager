@@ -51,8 +51,8 @@ export interface Pedido {
   vendedor_id?: string | null;
   /** Comisión calculada (venta × comision_pct del vendedor) */
   comision_monto?: number | null;
-  /** Si hay seña, siempre transferencia en la app */
-  forma_pago_sena?: "transferencia" | null;
+  /** Cómo se registró la seña (depósito parcial). */
+  forma_pago_sena?: "transferencia" | "efectivo" | null;
   /** Cobro total del saldo: efectivo o transferencia (modal Cobrar total) */
   forma_pago_total?: "efectivo" | "transferencia" | null;
   /** Incluido en exportación facturación ARCA */

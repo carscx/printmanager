@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/AuthContext";
 
 /** Admin → /dashboard; operador → /pedidos */
 export function HomeRedirect() {
