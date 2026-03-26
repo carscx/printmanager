@@ -14,6 +14,7 @@ import { BottomSheet } from "../components/ui/BottomSheet";
 import { useCartStore } from "../store/useCartStore";
 import { api, type HistorialFiltros } from "../services/api";
 import { normalizarEstadoPedido } from "../utils/pedidoEstado";
+import { formatCurrency } from "../utils/formatters";
 import { totalVentaPedido } from "../utils/pedidoTotalVenta";
 import { pedidosToCSV } from "../utils/pedidosCsv";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
@@ -847,21 +848,42 @@ export function PedidosPage() {
       <BottomSheet
         open={Boolean(pedidoCobroTotal)}
         onClose={() => setPedidoCobroTotal(null)}
-        title="Forma de pago del cobro total"
+        title="Forma de pago del saldo pendiente"
       >
         <div className="space-y-3 pt-2">
           <p className="text-center text-sm font-bold text-slate-700 px-1">
-            Elegí cómo se cobró el saldo. El pedido pasa a listo para retirar.
+            Elegí cómo se cobró el saldo restante. El pedido pasa a listo para
+            retirar.
           </p>
-          {pedidoCobroTotal && (
-            <p className="text-center text-xs font-bold text-slate-500">
-              Total:{" "}
-              <span className="text-slate-800">
-                $
-                {totalVentaPedido(pedidoCobroTotal).toLocaleString("es-AR")}
-              </span>
-            </p>
-          )}
+          {pedidoCobroTotal && (() => {
+            const totalP = totalVentaPedido(pedidoCobroTotal);
+            const sena = Number(pedidoCobroTotal.sena ?? 0);
+            const restante = Math.max(0, Math.round(totalP - sena));
+            return (
+              <div className="text-center text-xs font-bold text-slate-500 space-y-1.5 px-1">
+                <p>
+                  Total del pedido:{" "}
+                  <span className="text-slate-800">
+                    {formatCurrency(totalP)}
+                  </span>
+                </p>
+                {sena > 0 && (
+                  <p>
+                    Ya abonado (seña u otros pagos):{" "}
+                    <span className="text-slate-800">
+                      {formatCurrency(sena)}
+                    </span>
+                  </p>
+                )}
+                <p className="text-slate-700 pt-0.5 border-t border-slate-100">
+                  Saldo a cobrar ahora:{" "}
+                  <span className="text-slate-900 text-sm">
+                    {formatCurrency(restante)}
+                  </span>
+                </p>
+              </div>
+            );
+          })()}
           <button
             type="button"
             onClick={() => void confirmarCobroTotal("efectivo")}

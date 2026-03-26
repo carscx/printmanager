@@ -1,4 +1,5 @@
 import type { Pedido, EstadoPedido } from "../../types/pedido";
+import { formatCurrency } from "../../utils/formatters";
 import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
 import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 
@@ -27,6 +28,11 @@ export function PedidoEstadoSwitcher({
   const totalP = totalVentaPedido(pedido);
   const senaP = Number(pedido.sena ?? 0);
   const pagoTotal = totalP > 0 && senaP >= totalP;
+  /** Saldo a cobrar ahora (total menos lo ya abonado como seña / pagos parciales). */
+  const restante = Math.max(0, Math.round(totalP - senaP));
+  const etiquetaCobro =
+    senaP > 0 ? "Cobrar el restante" : "Cobrar total";
+  const montoCobroLabel = totalP > 0 ? formatCurrency(restante) : "—";
 
   switch (estado) {
     case "presupuesto":
@@ -58,8 +64,7 @@ export function PedidoEstadoSwitcher({
               className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
               disabled={disabled}
             >
-              Cobrar total (
-              {totalP > 0 ? `$${totalP.toLocaleString("es-AR")}` : "—"})
+              {etiquetaCobro} ({montoCobroLabel})
             </button>
           )}
         </div>
@@ -84,7 +89,7 @@ export function PedidoEstadoSwitcher({
           className={`${btnAct} border-emerald-800 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 focus-visible:ring-emerald-500`}
           disabled={disabled}
         >
-          Cobrar total
+          {etiquetaCobro} ({montoCobroLabel})
         </button>
       );
     case "pagado":
