@@ -17,6 +17,8 @@ import { aplicarFormaPagoCabecera } from "../utils/pedidoFormaPago";
 import { ActionSheet, ActionSheetTrigger } from "../components/ui/ActionSheet";
 import {
   labelAnillado,
+  labelSlugLineaImpresion,
+  perfilTintaEfectivo,
   precioAnilladoParaEspiralInsumo,
   precioImpresionActivoParaTipo
 } from "../types/precio";
@@ -69,7 +71,7 @@ export function NuevoPedidoPage() {
   // Form state for current item being configured
   const [paginas, setPaginas] = useState(0);
   const [copias, setCopias] = useState(1);
-  const [tipo, setTipo] = useState<"bn" | "color">("bn");
+  const [tipo, setTipo] = useState<string>("bn");
   const [dobleFaz, setDobleFaz] = useState(false);
   /** Incluye espiral; elegís el insumo (medida + rango) y el precio sigue la tarifa. */
   const [conAnillado, setConAnillado] = useState(false);
@@ -133,15 +135,49 @@ export function NuevoPedidoPage() {
     setEspiralInsumoId(espirales[0].id);
   }, [conAnillado, espirales, espiralInsumoId]);
 
+  /** Líneas con al menos una tarifa activa (slug + etiqueta para el cotizador). */
+  const lineasImpresionOpciones = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of preciosImpresion) {
+      if (p.activo === false) continue;
+      const slug = p.tipo;
+      if (!m.has(slug)) {
+        m.set(
+          slug,
+          (p.nombre ?? "").trim() || labelSlugLineaImpresion(slug)
+        );
+      }
+    }
+    return [...m.entries()]
+      .map(([slug, label]) => ({ slug, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [preciosImpresion]);
+
+  useEffect(() => {
+    if (preciosLoading) return;
+    const slugs = new Set(lineasImpresionOpciones.map((o) => o.slug));
+    if (slugs.size === 0) return;
+    if (slugs.has(tipo)) return;
+    setTipo(lineasImpresionOpciones[0]?.slug ?? "bn");
+  }, [preciosLoading, lineasImpresionOpciones, tipo]);
+
   const lineParams = useMemo((): CostoItemParams | null => {
     if (preciosLoading || costosLoading) return null;
     const anilladoSel = tarifaAnillado;
     const anillado_mm =
       anilladoSel?.medida_mm ?? espiralSel?.medida_mm ?? null;
+    const tarifaImp = soloAnillado
+      ? null
+      : precioImpresionActivoParaTipo(
+          preciosImpresion,
+          tipo,
+          soloAnillado ? false : dobleFaz
+        );
     const params: CostoItemParams = {
       paginas,
       copias,
       tipo,
+      perfil_tinta: perfilTintaEfectivo(tarifaImp),
       doble_faz: soloAnillado ? false : dobleFaz,
       anillado_mm,
       precio_anillado_id: anilladoSel?.id ?? null,
@@ -167,6 +203,7 @@ export function NuevoPedidoPage() {
     costosLoading,
     tarifaAnillado,
     espiralSel,
+    preciosImpresion,
     paginas,
     copias,
     tipo,
@@ -234,7 +271,9 @@ export function NuevoPedidoPage() {
   const resetFormItemFieldsOnly = () => {
     setPaginas(0);
     setCopias(1);
-    setTipo("bn");
+    const first =
+      preciosImpresion.find((p) => p.activo !== false)?.tipo ?? "bn";
+    setTipo(first);
     setDobleFaz(false);
     setConAnillado(false);
     setSoloAnillado(false);
@@ -274,7 +313,10 @@ export function NuevoPedidoPage() {
     setEditingItemIndex(index);
     setPaginas(it.paginas);
     setCopias(it.copias ?? 1);
-    const { tipo: t, dobleFaz: df } = parseTipoImpresionFromItem(it);
+    const { tipo: t, dobleFaz: df } = parseTipoImpresionFromItem(
+      it,
+      preciosImpresion
+    );
     setTipo(t);
     setDobleFaz(df);
     if (it.solo_anillado) {
@@ -376,6 +418,13 @@ export function NuevoPedidoPage() {
     const precioImp = soloAnillado
       ? null
       : precioImpresionActivoParaTipo(preciosImpresion, tipo, dobleFaz);
+    if (!soloAnillado && !precioImp) {
+      showToast(
+        "NO HAY TARIFA ACTIVA PARA ESA LÍNEA DE PRODUCTO Y CARA (REVISÁ PRECIOS)",
+        "error"
+      );
+      return;
+    }
     const venta = costEngine.calcularPrecioVenta(
       lineParams,
       preciosImpresion,
@@ -397,7 +446,12 @@ export function NuevoPedidoPage() {
       copias: lineParams.copias,
       tipo_impresion: soloAnillado
         ? "Solo anillado (copias del cliente)"
-        : `${tipo === "bn" ? "B/N" : "COLOR"} ${dobleFaz ? "DF" : "SF"}`,
+        : (() => {
+            const label =
+              (precioImp?.nombre ?? "").trim() ||
+              labelSlugLineaImpresion(tipo);
+            return `${label} ${dobleFaz ? "DF" : "SF"}`;
+          })(),
       anillado: anilladoSel
         ? labelAnillado(
             anilladoSel.medida_mm,
@@ -763,36 +817,30 @@ export function NuevoPedidoPage() {
               />
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-slate-400 ml-2 uppercase block">
-                  Tinta
+                  Línea de impresión
                 </span>
-                <div
-                  className={`flex rounded-sm border border-slate-100 overflow-hidden p-1 bg-slate-50 gap-1 ${
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                  disabled={soloAnillado || lineasImpresionOpciones.length === 0}
+                  className={`w-full min-h-12 rounded-sm border border-slate-200 bg-slate-50 px-3 font-black text-xs uppercase text-slate-800 cursor-pointer ${
                     soloAnillado ? "opacity-45 pointer-events-none" : ""
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setTipo("bn")}
-                    className={`flex-1 min-h-12 rounded-sm font-black text-xs uppercase py-3 transition-all ${
-                      tipo === "bn"
-                        ? "bg-slate-900 text-white shadow-md"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    B&amp;N
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipo("color")}
-                    className={`flex-1 min-h-12 rounded-sm font-black text-xs uppercase py-3 transition-all ${
-                      tipo === "color"
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    Color
-                  </button>
-                </div>
+                  {lineasImpresionOpciones.length === 0 ? (
+                    <option value="">Sin tarifas activas</option>
+                  ) : (
+                    lineasImpresionOpciones.map((o) => (
+                      <option key={o.slug} value={o.slug}>
+                        {o.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <p className="text-[9px] text-slate-400 font-semibold ml-2 leading-snug">
+                  Definí líneas nuevas en Precios → tarifas; después cargá reglas e
+                  insumos para cada tarifa.
+                </p>
               </div>
             </div>
 

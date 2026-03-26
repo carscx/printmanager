@@ -11,6 +11,7 @@ import type {
 import type { ProductoTarifaAfectada } from "../types/insumoAfectado";
 import type { AlcanceReceta } from "../types/receta";
 import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
+import { labelSlugLineaImpresion } from "../types/precio";
 import { fnCostoTotalRealInsumos } from "./bomPreview";
 import {
   validarInsumoStockYPrecio,
@@ -197,7 +198,7 @@ export const insumosApi = {
         pv > 0 && cd != null
           ? Math.round(((pv - costoReal) / pv) * 1000) / 10
           : null;
-      const tipo = pi.tipo === "color" ? "Color" : "B&N";
+      const tipo = labelSlugLineaImpresion(pi.tipo);
       const df = pi.doble_faz ? "DF" : "SF";
       out.push({
         receta_id: String(r.id),

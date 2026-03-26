@@ -1,17 +1,56 @@
 // ── Precios de impresión ─────────────────────────────────────────────────────
 
-export const TIPO_IMPRESION = ["bn", "color"] as const;
-export type TipoImpresion = (typeof TIPO_IMPRESION)[number];
+/** Slug de línea de producto (bn, color, candy_bar, pegatinas, …). Dinámico vía tarifas. */
+export type SlugLineaImpresion = string;
 
-export const TIPO_IMPRESION_LABELS: Record<TipoImpresion, string> = {
+/** Alias histórico: el “tipo” de tarifa es el slug de línea. */
+export type TipoImpresion = SlugLineaImpresion;
+
+/** Motor legacy de costo de tinta: tóner vs suma de tintas. */
+export type PerfilTintaImpresion = "bn" | "color";
+
+const SLUG_LINEA_LABELS: Record<string, string> = {
   bn: "B&N",
-  color: "Color"
+  color: "Color",
+  stickers: "Stickers"
 };
+
+/** Etiqueta corta para un slug (líneas nuevas: reemplazar _ por espacio). */
+export function labelSlugLineaImpresion(slug: string): string {
+  const s = (slug ?? "").trim().toLowerCase();
+  if (!s) return "—";
+  return SLUG_LINEA_LABELS[s] ?? s.replace(/_/g, " ");
+}
+
+/**
+ * Normaliza texto ingresado a slug: minúsculas, espacios → _, sin caracteres raros.
+ */
+export function normalizarSlugLineaImpresion(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+/** Perfil de tinta para el motor legacy (fila de tarifa o heurística por slug `bn`). */
+export function perfilTintaEfectivo(
+  p: PrecioImpresion | undefined | null
+): PerfilTintaImpresion {
+  if (!p) return "color";
+  if (p.perfil_tinta === "bn" || p.perfil_tinta === "color") {
+    return p.perfil_tinta;
+  }
+  return p.tipo === "bn" ? "bn" : "color";
+}
 
 export interface PrecioImpresion {
   id: string;
-  tipo: TipoImpresion;
+  /** Slug estable de la línea (único por combinación con doble_faz en tarifa activa). */
+  tipo: SlugLineaImpresion;
   doble_faz: boolean;
+  /** Tóner (bn) o tintas color; define el costo estimado de tinta en el motor. */
+  perfil_tinta?: PerfilTintaImpresion | null;
   /** Etiqueta opcional (varias tarifas por tipo/faz; solo una activa). */
   nombre?: string | null;
   /** Equipo para ROI (vista `v_equipo_resumen_roi`); migración 37. */
@@ -27,7 +66,7 @@ export interface PrecioImpresion {
 export type PrecioImpresionInput = Pick<
   PrecioImpresion,
   "tipo" | "doble_faz" | "precio_venta"
->;
+> & { perfil_tinta?: PerfilTintaImpresion };
 
 // ── Precios de anillado ─────────────────────────────────────────────────────
 
@@ -137,10 +176,13 @@ export interface PedidoItemInsumo {
 // ── Helpers para etiquetas en UI ────────────────────────────────────────────
 
 export function labelPrecioImpresion(
-  tipo: TipoImpresion,
-  dobleFaz: boolean
+  tipo: SlugLineaImpresion,
+  dobleFaz: boolean,
+  nombreMostrar?: string | null
 ): string {
-  return `${TIPO_IMPRESION_LABELS[tipo]} ${dobleFaz ? "Doble Faz" : "Simple Faz"}`;
+  const t =
+    (nombreMostrar ?? "").trim() || labelSlugLineaImpresion(tipo);
+  return `${t} ${dobleFaz ? "Doble Faz" : "Simple Faz"}`;
 }
 
 /** Etiqueta en listados (nombre + tipo/faz). */
@@ -153,7 +195,7 @@ export function labelPrecioImpresionTarifa(p: PrecioImpresion): string {
 /** Tarifa usada en cotización: una activa por (tipo, doble_faz). */
 export function precioImpresionActivoParaTipo(
   precios: PrecioImpresion[],
-  tipo: TipoImpresion,
+  tipo: SlugLineaImpresion,
   dobleFaz: boolean
 ): PrecioImpresion | undefined {
   return precios.find(

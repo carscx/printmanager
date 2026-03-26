@@ -23,7 +23,7 @@ export type HistorialFiltros = {
    */
   busquedaClientePedido?: string | null;
   searchQuery?: string | null;
-  tipoTrabajo?: "bn" | "color" | "anillado" | null;
+  tipoTrabajo?: "bn" | "color" | "stickers" | "anillado" | null;
   cobranza?: "todos" | "impago" | "pagado" | null;
 };
 
@@ -181,6 +181,8 @@ export const api = {
       query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
     } else if (tipoTrabajo === "color") {
       query = query.ilike("pedido_items.tipo_impresion", "%COLOR%");
+    } else if (tipoTrabajo === "stickers") {
+      query = query.ilike("pedido_items.tipo_impresion", "%STICKERS%");
     } else if (tipoTrabajo === "anillado") {
       query = query.not("pedido_items.anillado", "is", null);
     }
@@ -214,6 +216,8 @@ export const api = {
           query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
         } else if (tipoTrabajo === "color") {
           query = query.ilike("pedido_items.tipo_impresion", "%COLOR%");
+        } else if (tipoTrabajo === "stickers") {
+          query = query.ilike("pedido_items.tipo_impresion", "%STICKERS%");
         } else if (tipoTrabajo === "anillado") {
           query = query.not("pedido_items.anillado", "is", null);
         }

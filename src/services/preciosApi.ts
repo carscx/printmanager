@@ -2,6 +2,7 @@ import { sb } from "../config/supabase";
 import {
   CONFIG_COSTO_DESCRIPCIONES,
   mergeConfigCostosRows,
+  type PerfilTintaImpresion,
   type PrecioImpresion,
   type PrecioAnillado,
   type PrecioAnilladoInput,
@@ -10,12 +11,71 @@ import {
 import type { ConfiguracionNegocio } from "../types/configuracionNegocio";
 
 /**
- * Columnas que PostgREST suele tener en caché desde el esquema original.
- * No incluimos `nombre` (31): si la caché de la API no se actualizó, `select=*`
- * o INSERT con `nombre` devuelve 400/PGRST204. El default en BD aplica para `nombre`.
+ * Columnas por versión de esquema:
+ * - `nombre` → migración 31
+ * - `perfil_tinta` → migración 47
+ * PostgREST puede fallar (schema cache) si el cliente pide columnas que no ve.
  */
-const PRECIOS_IMPRESION_SELECT =
+const PRECIOS_IMPRESION_SELECT_FULL =
+  "id,tipo,doble_faz,nombre,perfil_tinta,precio_venta,activo,updated_at,updated_by,costo_insumo_directo,equipo_id" as const;
+
+/** Sin `nombre` (31), con `perfil_tinta` (47). */
+const PRECIOS_IMPRESION_SELECT_SIN_NOMBRE =
+  "id,tipo,doble_faz,perfil_tinta,precio_venta,activo,updated_at,updated_by,costo_insumo_directo,equipo_id" as const;
+
+/** Sin `nombre` ni `perfil_tinta` (solo columnas “clásicas” + costo/equipo). */
+const PRECIOS_IMPRESION_SELECT_SIN_NOMBRE_NI_PERFIL =
   "id,tipo,doble_faz,precio_venta,activo,updated_at,updated_by,costo_insumo_directo,equipo_id" as const;
+
+/** Mínimo para listar si el esquema va muy desfasado. */
+const PRECIOS_IMPRESION_SELECT_MINIMAL =
+  "id,tipo,doble_faz,precio_venta,activo" as const;
+
+/** Error típico: columna inexistente o caché de PostgREST desactualizada. */
+function esErrorEsquemaColumna(error: unknown): boolean {
+  const e = error as { code?: string; message?: string; details?: string };
+  const msg = `${e.message ?? ""} ${e.details ?? ""}`;
+  return (
+    e.code === "PGRST204" ||
+    e.code === "42703" ||
+    /perfil_tinta|nombre|equipo_id|costo_insumo/i.test(msg) ||
+    /Could not find|column .* does not exist|schema cache/i.test(msg)
+  );
+}
+
+/** Normaliza una fila de `precios_impresion` (completa o mínima) para la UI. */
+export function normalizarFilaPrecioImpresion(raw: unknown): PrecioImpresion {
+  const r = raw as Record<string, unknown>;
+  const tipo = String(r.tipo ?? "").trim() || "bn";
+  const pv = Number(r.precio_venta);
+  const perfil: PerfilTintaImpresion =
+    r.perfil_tinta === "bn" || r.perfil_tinta === "color"
+      ? r.perfil_tinta
+      : tipo === "bn"
+        ? "bn"
+        : "color";
+  return {
+    id: String(r.id ?? ""),
+    tipo,
+    doble_faz: Boolean(r.doble_faz),
+    nombre: r.nombre != null && String(r.nombre).trim() !== "" ? String(r.nombre) : null,
+    perfil_tinta: perfil,
+    equipo_id: r.equipo_id != null ? String(r.equipo_id) : null,
+    precio_venta: Number.isFinite(pv) ? pv : 0,
+    costo_insumo_directo:
+      r.costo_insumo_directo != null &&
+      Number.isFinite(Number(r.costo_insumo_directo))
+        ? Number(r.costo_insumo_directo)
+        : null,
+    activo: r.activo !== false,
+    updated_at: typeof r.updated_at === "string" ? r.updated_at : "",
+    updated_by: r.updated_by != null ? String(r.updated_by) : null
+  };
+}
+
+function mapPrecioImpresionRows(rows: unknown[] | null): PrecioImpresion[] {
+  return (rows ?? []).map((row) => normalizarFilaPrecioImpresion(row));
+}
 
 export const preciosApi = {
   // ── CONFIGURACIÓN DE NEGOCIO (Épica 1, single row) ───────────────────────
@@ -85,15 +145,34 @@ export const preciosApi = {
   async fetchPreciosImpresion(
     soloActivos = true
   ): Promise<PrecioImpresion[]> {
-    let q = sb
-      .from("precios_impresion")
-      .select(PRECIOS_IMPRESION_SELECT)
-      .order("tipo")
-      .order("doble_faz");
-    if (soloActivos) q = q.eq("activo", true);
-    const { data, error } = await q;
+    const ejecutar = (select: string) => {
+      let q = sb
+        .from("precios_impresion")
+        .select(select)
+        .order("tipo", { ascending: true })
+        .order("doble_faz", { ascending: true });
+      if (soloActivos) q = q.eq("activo", true);
+      return q;
+    };
+
+    let { data, error } = await ejecutar(PRECIOS_IMPRESION_SELECT_FULL);
+    if (error) {
+      const r1 = await ejecutar(PRECIOS_IMPRESION_SELECT_SIN_NOMBRE);
+      data = r1.data;
+      error = r1.error;
+    }
+    if (error) {
+      const r2 = await ejecutar(PRECIOS_IMPRESION_SELECT_SIN_NOMBRE_NI_PERFIL);
+      data = r2.data;
+      error = r2.error;
+    }
+    if (error) {
+      const r3 = await ejecutar(PRECIOS_IMPRESION_SELECT_MINIMAL);
+      data = r3.data;
+      error = r3.error;
+    }
     if (error) throw error;
-    return (data ?? []) as PrecioImpresion[];
+    return mapPrecioImpresionRows(data ?? []);
   },
 
   async actualizarPrecioImpresion(
@@ -115,6 +194,10 @@ export const preciosApi = {
     doble_faz: boolean;
     precio_venta: number;
     activo?: boolean;
+    /** Etiqueta opcional (misma semántica que migración 31). */
+    nombre?: string | null;
+    /** Tóner vs tintas color (migración 47). */
+    perfil_tinta: PerfilTintaImpresion;
   }): Promise<PrecioImpresion> {
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
     const { data: conflict } = await sb
@@ -128,25 +211,59 @@ export const preciosApi = {
     if (conflict?.id && activo) {
       activo = false;
     }
-    const payload = {
+    const payload: Record<string, unknown> = {
       tipo: input.tipo,
       doble_faz: input.doble_faz,
       precio_venta: input.precio_venta,
+      perfil_tinta: input.perfil_tinta,
       activo,
       updated_by: uid
     };
-    const res = await sb
-      .from("precios_impresion")
-      .insert(payload)
-      .select(PRECIOS_IMPRESION_SELECT)
-      .single();
+    if (input.nombre != null && String(input.nombre).trim() !== "") {
+      payload.nombre = String(input.nombre).trim();
+    }
+    const insertar = (
+      pl: Record<string, unknown>,
+      sel: string
+    ) =>
+      sb.from("precios_impresion").insert(pl).select(sel).single();
+
+    let res = await insertar(payload, PRECIOS_IMPRESION_SELECT_FULL);
+    if (res.error && esErrorEsquemaColumna(res.error)) {
+      const { nombre: _n, ...sinNombre } = payload;
+      res = await insertar(sinNombre, PRECIOS_IMPRESION_SELECT_SIN_NOMBRE);
+    }
+    if (res.error && esErrorEsquemaColumna(res.error)) {
+      const { nombre: _n2, perfil_tinta: _pt, ...sinNombreNiPerfil } = payload;
+      res = await insertar(
+        sinNombreNiPerfil,
+        PRECIOS_IMPRESION_SELECT_SIN_NOMBRE_NI_PERFIL
+      );
+    }
+    if (res.error && esErrorEsquemaColumna(res.error)) {
+      const min: Record<string, unknown> = {
+        tipo: payload.tipo,
+        doble_faz: payload.doble_faz,
+        precio_venta: payload.precio_venta,
+        activo: payload.activo,
+        updated_by: payload.updated_by
+      };
+      res = await insertar(min, PRECIOS_IMPRESION_SELECT_MINIMAL);
+    }
     if (res.error) throw res.error;
-    return res.data as PrecioImpresion;
+    const row = res.data as PrecioImpresion | null;
+    if (!row) throw new Error("Sin datos tras crear tarifa de impresión.");
+    return mapPrecioImpresionRows([row])[0] as PrecioImpresion;
   },
 
   async actualizarPrecioImpresionCompleto(
     id: string,
-    patch: Partial<Pick<PrecioImpresion, "precio_venta" | "activo" | "equipo_id">>
+    patch: Partial<
+      Pick<
+        PrecioImpresion,
+        "precio_venta" | "activo" | "equipo_id" | "perfil_tinta"
+      >
+    >
   ): Promise<void> {
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
     const row: Record<string, unknown> = { updated_by: uid };
@@ -154,11 +271,21 @@ export const preciosApi = {
       row.precio_venta = patch.precio_venta;
     if (patch.activo !== undefined) row.activo = patch.activo;
     if (patch.equipo_id !== undefined) row.equipo_id = patch.equipo_id;
-    const upd = await sb
+    if (patch.perfil_tinta !== undefined)
+      row.perfil_tinta = patch.perfil_tinta;
+    let upd = await sb
       .from("precios_impresion")
       .update(row)
       .eq("id", id)
       .select("id");
+    if (upd.error && esErrorEsquemaColumna(upd.error) && "perfil_tinta" in row) {
+      const { perfil_tinta: _p, ...rowSinPerfil } = row;
+      upd = await sb
+        .from("precios_impresion")
+        .update(rowSinPerfil)
+        .eq("id", id)
+        .select("id");
+    }
     if (upd.error) throw upd.error;
     const data = upd.data;
     if (!data?.length) {

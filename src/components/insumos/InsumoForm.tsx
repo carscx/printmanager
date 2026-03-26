@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type {
   Insumo,
   InsumoInput,
@@ -58,9 +58,8 @@ const CATEGORIAS_RENDIMIENTO_OBLIGA_CONTENIDO: InsumoCategoria[] = [
 ];
 const CATEGORIAS_CON_HOJAS: InsumoCategoria[] = ["papel"];
 
-/** Rendimiento fijado por maestro (SQL + motor de costos); no editable en el formulario. */
+/** Rendimiento fijado por maestro (SQL + motor de costos); no editable salvo papel (hojas/resma). */
 const CATEGORIAS_RENDIMIENTO_MAESTRO: InsumoCategoria[] = [
-  "papel",
   "toner",
   "tinta",
   "espiral"
@@ -143,6 +142,14 @@ export function InsumoForm({
   const [tipoPapel, setTipoPapel] = useState(insumo?.tipo_papel ?? "");
   const [rendimiento, setRendimiento] = useState<string>(() => {
     const cat = insumo?.categoria ?? "espiral";
+    if (cat === "papel") {
+      const uve =
+        insumo?.unidad_venta_equivalente ??
+        insumo?.hojas_por_unidad ??
+        insumo?.rendimiento;
+      if (uve != null && Number(uve) > 0) return String(Math.round(Number(uve)));
+      return String(RENDIMIENTO_MAESTRO_PAPEL);
+    }
     const m = rendimientoMaestroNum(cat);
     if (m != null) return String(m);
     return insumo?.rendimiento != null ? String(insumo.rendimiento) : "";
@@ -152,6 +159,14 @@ export function InsumoForm({
   );
   const [equivVenta, setEquivVenta] = useState<string>(() => {
     const cat = insumo?.categoria ?? "espiral";
+    if (cat === "papel") {
+      const uve =
+        insumo?.unidad_venta_equivalente ??
+        insumo?.hojas_por_unidad ??
+        insumo?.rendimiento;
+      if (uve != null && Number(uve) > 0) return String(Math.round(Number(uve)));
+      return String(RENDIMIENTO_MAESTRO_PAPEL);
+    }
     const m = rendimientoMaestroNum(cat);
     if (m != null) return String(m);
     if (insumo?.unidad_venta_equivalente != null)
@@ -169,6 +184,7 @@ export function InsumoForm({
   const [saving, setSaving] = useState(false);
   const [sheetCat, setSheetCat] = useState(false);
   const [sheetUnidad, setSheetUnidad] = useState(false);
+  const prevCategoriaRef = useRef(categoria);
 
   // Auto-set unidad cuando cambia categoría (solo en creación)
   useEffect(() => {
@@ -177,11 +193,17 @@ export function InsumoForm({
     }
   }, [categoria, isEdit]);
 
-  /** Maestros de rendimiento siempre alineados a categoría (crear y editar). */
+  /** Maestros de rendimiento (tóner/tinta/espiral). Papel: solo default al pasar a “papel” en alta. */
   useEffect(() => {
     if (categoria === "papel") {
-      setEquivVenta(String(RENDIMIENTO_MAESTRO_PAPEL));
-    } else if (categoria === "toner") {
+      if (!isEdit && prevCategoriaRef.current !== "papel") {
+        setEquivVenta(String(RENDIMIENTO_MAESTRO_PAPEL));
+      }
+      prevCategoriaRef.current = categoria;
+      return;
+    }
+    prevCategoriaRef.current = categoria;
+    if (categoria === "toner") {
       setRendimiento(String(RENDIMIENTO_MAESTRO_TONER));
       setEquivVenta(String(RENDIMIENTO_MAESTRO_TONER));
     } else if (categoria === "tinta") {
@@ -214,7 +236,16 @@ export function InsumoForm({
 
     let rendimientoOut: number;
     if (categoria === "papel") {
-      rendimientoOut = RENDIMIENTO_MAESTRO_PAPEL;
+      const ev = parseFloat(equivVenta.replace(",", "."));
+      const hojas = Number.isFinite(ev) && ev > 0 ? Math.round(ev) : RENDIMIENTO_MAESTRO_PAPEL;
+      if (hojas < 1 || hojas > 100_000) {
+        showToast(
+          "HOJAS POR RESMA: INDICÁ UN VALOR ENTRE 1 Y 100000 (EJ. 500, 100, 20)",
+          "error"
+        );
+        return;
+      }
+      rendimientoOut = hojas;
     } else if (categoria === "tinta") {
       rendimientoOut = RENDIMIENTO_MAESTRO_TINTA;
     } else if (categoria === "toner") {
@@ -258,9 +289,8 @@ export function InsumoForm({
     }
 
     if (categoria === "papel") {
-      const h = RENDIMIENTO_MAESTRO_PAPEL;
-      stAct *= h;
-      stMin *= h;
+      stAct *= rendimientoOut;
+      stMin *= rendimientoOut;
     } else if (categoria === "toner") {
       stAct *= RENDIMIENTO_MAESTRO_TONER;
       stMin *= RENDIMIENTO_MAESTRO_TONER;
@@ -335,13 +365,23 @@ export function InsumoForm({
     rendimientoMaestroNum(categoria) != null &&
     Number(insumo.rendimiento) !== rendimientoMaestroNum(categoria);
 
+  const hojasPapelPreview =
+    categoria === "papel"
+      ? (() => {
+          const ev = parseFloat(equivVenta.replace(",", ".")) || 0;
+          return Number.isFinite(ev) && ev > 0
+            ? Math.round(ev)
+            : RENDIMIENTO_MAESTRO_PAPEL;
+        })()
+      : RENDIMIENTO_MAESTRO_PAPEL;
+
   const equivalenciaCompra = useMemo(() => {
     if (!compraSimple) return null;
     const precio = parseFloat(precioCompra.replace(",", ".")) || 0;
     const cant = parseFloat(stockActual.replace(",", ".")) || 0;
     if (precio <= 0 || cant < 0) return null;
     if (categoria === "papel") {
-      const h = RENDIMIENTO_MAESTRO_PAPEL;
+      const h = hojasPapelPreview;
       const u = cant * h;
       const cu = precio / h;
       return { unidades: u, cu, detalle: "hojas" as const };
@@ -358,7 +398,7 @@ export function InsumoForm({
       return { unidades: ml, cu, detalle: "ml" as const };
     }
     return null;
-  }, [compraSimple, categoria, precioCompra, stockActual]);
+  }, [compraSimple, categoria, precioCompra, stockActual, hojasPapelPreview]);
 
   return (
     <>
@@ -475,10 +515,16 @@ export function InsumoForm({
         )}
       </div>
 
-      {compraSimple && categoria !== "tinta" && (
+      {compraSimple && categoria !== "tinta" && categoria !== "papel" && (
         <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          Cargá bultos y precio de esa compra. El sistema guarda hojas (papel) o
-          carillas (tóner) según el maestro.
+          Cargá bultos y precio de esa compra. El sistema convierte a carillas
+          (tóner) según el maestro.
+        </p>
+      )}
+      {compraSimple && categoria === "papel" && (
+        <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
+          Indicá <strong>hojas por resma</strong> abajo. El stock en depósito se
+          guarda en <strong>hojas</strong> (resmas × hojas/resma).
         </p>
       )}
       {compraSimple && categoria === "tinta" && (
@@ -489,6 +535,32 @@ export function InsumoForm({
           <strong>30 páginas por ml</strong> solo aplica al costo de impresión, no al
           valor de stock.
         </p>
+      )}
+
+      {categoria === "papel" && (
+        <div className="rounded-sm border border-amber-300 bg-amber-50/50 px-3 py-3 space-y-2">
+          <label className="text-[10px] font-black text-amber-900 ml-0.5 uppercase">
+            Hojas por resma (o paquete) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={100000}
+            step={1}
+            value={equivVenta}
+            onChange={(e) => {
+              const v = e.target.value;
+              setEquivVenta(v);
+              setRendimiento(v);
+            }}
+            className="w-full max-w-[220px] p-3 bg-white rounded-sm font-black text-amber-950 border border-amber-200 outline-none"
+          />
+          <p className="text-[9px] text-amber-800 font-semibold leading-snug">
+            Típico: <strong>500</strong> hojas. Especiales: <strong>100</strong>,{" "}
+            <strong>20</strong>, etc. El precio de compra es por{" "}
+            <strong>resma/paquete</strong>; costo/hoja = precio ÷ hojas.
+          </p>
+        </div>
       )}
 
       {CATEGORIAS_RENDIMIENTO_MAESTRO.includes(categoria) && (
@@ -507,14 +579,6 @@ export function InsumoForm({
               Rendimiento (maestro — no editable)
             </p>
             <p className="text-sm font-black text-slate-900">
-              {categoria === "papel" && (
-                <>
-                  {RENDIMIENTO_MAESTRO_PAPEL}{" "}
-                  <span className="text-slate-600 font-bold text-xs">
-                    hojas por resma
-                  </span>
-                </>
-              )}
               {categoria === "toner" && (
                 <>
                   {RENDIMIENTO_MAESTRO_TONER}{" "}

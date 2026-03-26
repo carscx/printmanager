@@ -1,28 +1,78 @@
 import type { PedidoItem } from "../types/pedido";
+import {
+  perfilTintaEfectivo,
+  type PerfilTintaImpresion,
+  type PrecioImpresion,
+  type SlugLineaImpresion
+} from "../types/precio";
 
-/** Reconstruye tinta y doble faz desde el ítem (prioriza flags persistidos). */
-export function parseTipoImpresionFromItem(item: PedidoItem): {
-  tipo: "bn" | "color";
+/** Reconstruye línea, perfil de tinta y doble faz desde el ítem (prioriza tarifa vinculada). */
+export function parseTipoImpresionFromItem(
+  item: PedidoItem,
+  precios?: PrecioImpresion[]
+): {
+  tipo: SlugLineaImpresion;
+  perfil_tinta: PerfilTintaImpresion;
   dobleFaz: boolean;
 } {
+  if (item.precio_impresion_id && precios?.length) {
+    const pi = precios.find((p) => p.id === item.precio_impresion_id);
+    if (pi) {
+      return {
+        tipo: pi.tipo,
+        perfil_tinta: perfilTintaEfectivo(pi),
+        dobleFaz:
+          typeof item.doble_faz === "boolean" ? item.doble_faz : pi.doble_faz
+      };
+    }
+  }
   if (typeof item.doble_faz === "boolean") {
-    const u = (item.tipo_impresion || "").toUpperCase();
-    const color = u.includes("COLOR");
-    return { tipo: color ? "color" : "bn", dobleFaz: item.doble_faz };
+    return parseLegacyTipoImpresionFlags(item.tipo_impresion, item.doble_faz);
   }
   return parseTipoImpresionString(item.tipo_impresion);
 }
 
+function parseLegacyTipoImpresionFlags(
+  tipoImpresion: string | undefined,
+  dobleFaz: boolean
+): {
+  tipo: SlugLineaImpresion;
+  perfil_tinta: PerfilTintaImpresion;
+  dobleFaz: boolean;
+} {
+  const u = (tipoImpresion || "").toUpperCase();
+  if (u.includes("STICKERS")) {
+    return { tipo: "stickers", perfil_tinta: "color", dobleFaz };
+  }
+  if (u.includes("COLOR")) {
+    return { tipo: "color", perfil_tinta: "color", dobleFaz };
+  }
+  if (u.includes("B/N") || u.includes("B&N")) {
+    return { tipo: "bn", perfil_tinta: "bn", dobleFaz };
+  }
+  return { tipo: "bn", perfil_tinta: "bn", dobleFaz };
+}
+
 function parseTipoImpresionString(s: string): {
-  tipo: "bn" | "color";
+  tipo: SlugLineaImpresion;
+  perfil_tinta: PerfilTintaImpresion;
   dobleFaz: boolean;
 } {
   const u = (s || "").toUpperCase();
-  if (u.includes("SOLO ANILLADO") || u.includes("MIGRADO"))
-    return { tipo: "bn", dobleFaz: false };
+  if (u.includes("SOLO ANILLADO") || u.includes("MIGRADO")) {
+    return { tipo: "bn", perfil_tinta: "bn", dobleFaz: false };
+  }
+  if (u.includes("STICKERS")) {
+    const df = u.includes("DF") || u.includes("DOBLE FAZ");
+    return { tipo: "stickers", perfil_tinta: "color", dobleFaz: df };
+  }
   const color = u.includes("COLOR");
   const df = u.includes("DF") || u.includes("DOBLE FAZ");
-  return { tipo: color ? "color" : "bn", dobleFaz: df };
+  return {
+    tipo: color ? "color" : "bn",
+    perfil_tinta: color ? "color" : "bn",
+    dobleFaz: df
+  };
 }
 
 export function descRecStateFromItem(item: PedidoItem): {

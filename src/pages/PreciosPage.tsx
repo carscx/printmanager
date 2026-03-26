@@ -18,6 +18,7 @@ export function PreciosPage() {
     preciosAnillado,
     configCostos,
     loading,
+    errorImpresion,
     reload,
     reloadSilent
   } = usePrecios();
@@ -60,6 +61,16 @@ export function PreciosPage() {
 
   return (
     <section className="animate-slide-in-bottom space-y-4">
+      {errorImpresion && (
+        <div
+          className="rounded-sm border border-red-200 bg-red-50 px-3 py-2.5 text-[10px] font-bold text-red-900 leading-snug"
+          role="alert"
+        >
+          <i className="fas fa-triangle-exclamation mr-1" />
+          No se pudieron cargar las tarifas de impresión desde Supabase.{" "}
+          <span className="font-mono font-normal opacity-90">{errorImpresion}</span>
+        </div>
+      )}
       <div className="flex gap-2 flex-wrap">
         {secciones.map((s) => (
           <button

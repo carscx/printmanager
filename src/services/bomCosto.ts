@@ -56,6 +56,8 @@ export function rendimientoEfectivoInsumo(insumo: Insumo): number {
     case "tinta":
       return RENDIMIENTO_MAESTRO_TINTA;
     case "papel": {
+      const uve = Number(insumo.unidad_venta_equivalente);
+      if (Number.isFinite(uve) && uve > 0) return uve;
       const h = Number(insumo.hojas_por_unidad);
       if (Number.isFinite(h) && h > 0) return h;
       return RENDIMIENTO_MAESTRO_PAPEL;

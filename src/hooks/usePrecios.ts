@@ -16,7 +16,8 @@ import type {
 async function aplicarCargasPrecios(
   setPreciosImpresion: Dispatch<SetStateAction<PrecioImpresion[]>>,
   setPreciosAnillado: Dispatch<SetStateAction<PrecioAnillado[]>>,
-  setConfigCostos: Dispatch<SetStateAction<ConfigCosto[]>>
+  setConfigCostos: Dispatch<SetStateAction<ConfigCosto[]>>,
+  setErrorImpresion: Dispatch<SetStateAction<string | null>>
 ): Promise<void> {
   const results = await Promise.allSettled([
     preciosApi.fetchPreciosImpresion(false),
@@ -25,8 +26,18 @@ async function aplicarCargasPrecios(
   ]);
   if (results[0].status === "fulfilled") {
     setPreciosImpresion(results[0].value);
+    setErrorImpresion(null);
   } else {
-    console.error("Error cargando precios impresión:", results[0].reason);
+    const reason = results[0].reason;
+    const msg =
+      reason instanceof Error
+        ? reason.message
+        : typeof reason === "object" && reason !== null && "message" in reason
+          ? String((reason as { message: string }).message)
+          : String(reason);
+    setErrorImpresion(msg);
+    setPreciosImpresion([]);
+    console.error("Error cargando precios impresión:", reason);
   }
   if (results[1].status === "fulfilled") {
     setPreciosAnillado(results[1].value);
@@ -47,6 +58,7 @@ export function usePrecios() {
   const [preciosAnillado, setPreciosAnillado] = useState<PrecioAnillado[]>([]);
   const [configCostos, setConfigCostos] = useState<ConfigCosto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorImpresion, setErrorImpresion] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -54,7 +66,8 @@ export function usePrecios() {
       await aplicarCargasPrecios(
         setPreciosImpresion,
         setPreciosAnillado,
-        setConfigCostos
+        setConfigCostos,
+        setErrorImpresion
       );
     } finally {
       setLoading(false);
@@ -66,7 +79,8 @@ export function usePrecios() {
     await aplicarCargasPrecios(
       setPreciosImpresion,
       setPreciosAnillado,
-      setConfigCostos
+      setConfigCostos,
+      setErrorImpresion
     );
   }, []);
 
@@ -79,6 +93,7 @@ export function usePrecios() {
     preciosAnillado,
     configCostos,
     loading,
+    errorImpresion,
     reload,
     reloadSilent
   };

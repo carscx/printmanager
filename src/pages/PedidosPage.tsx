@@ -24,7 +24,7 @@ import {
 } from "../services/pedidoControlPdf";
 
 type DatePreset = "todo" | "hoy" | "semana" | "mes" | "custom";
-type TipoTrabajo = "bn" | "color" | "anillado" | "todos";
+type TipoTrabajo = "bn" | "color" | "stickers" | "anillado" | "todos";
 type CobranzaFiltro = "todos" | "impago" | "pagado";
 
 function startOfDay(d: Date) {
@@ -116,6 +116,7 @@ export function PedidosPage() {
         { value: "todos" as const, label: "Todos" },
         { value: "bn" as const, label: "B&N" },
         { value: "color" as const, label: "Color" },
+        { value: "stickers" as const, label: "Stickers" },
         { value: "anillado" as const, label: "Con anillado" }
       ] as const,
     []

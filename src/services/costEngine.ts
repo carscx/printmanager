@@ -1,7 +1,9 @@
 import type {
   PrecioImpresion,
   PrecioAnillado,
-  ConfigCosto
+  ConfigCosto,
+  PerfilTintaImpresion,
+  SlugLineaImpresion
 } from "../types/precio";
 import type { Insumo } from "../types/insumo";
 import type { Equipo } from "../types/equipo";
@@ -17,7 +19,10 @@ import type { ReglaCosto } from "../types/reglaCosto";
 export interface CostoItemParams {
   paginas: number;
   copias: number;
-  tipo: "bn" | "color";
+  /** Slug de línea de producto (debe coincidir con `precios_impresion.tipo`). */
+  tipo: SlugLineaImpresion;
+  /** Tóner vs tintas color (costo estimado de tinta en el motor legacy). */
+  perfil_tinta: PerfilTintaImpresion;
   doble_faz: boolean;
   anillado_mm: number | null; // null = sin anillado
   /** Si está definido, usa esta fila del tarifario (evita ambigüedad por medida). */
@@ -62,7 +67,7 @@ export interface ResultadoItem {
 
 function encontrarPrecioImpresion(
   precios: PrecioImpresion[],
-  tipo: "bn" | "color",
+  tipo: SlugLineaImpresion,
   dobleFaz: boolean
 ): number {
   const precio = precios.find(
@@ -120,8 +125,11 @@ function costoPapelPorHoja(insumos: Insumo[]): number {
 /**
  * Tóner o suma de tintas por página: costo unitario ya prorrateado por cartucho/tinta.
  */
-function costoTintaPorPagina(insumos: Insumo[], tipo: "bn" | "color"): number {
-  if (tipo === "bn") {
+function costoTintaPorPagina(
+  insumos: Insumo[],
+  perfilTinta: PerfilTintaImpresion
+): number {
+  if (perfilTinta === "bn") {
     const toner = insumos.find(
       (i) =>
         i.activo &&
@@ -236,7 +244,7 @@ export const costEngine = {
       !solo_anillado && paginas > 0 ? hojas * costoPapelPorHoja(insumos) : 0;
     const tinta =
       !solo_anillado && paginas > 0
-        ? paginas * costoTintaPorPagina(insumos, params.tipo)
+        ? paginas * costoTintaPorPagina(insumos, params.perfil_tinta)
         : 0;
     const amortizacion =
       !solo_anillado && paginas > 0
@@ -397,6 +405,7 @@ export function costoVariablePorUnidadAnillado(
     paginas: 0,
     copias: 1,
     tipo: "bn",
+    perfil_tinta: "bn",
     doble_faz: false,
     anillado_mm: precio.medida_mm,
     solo_anillado: true

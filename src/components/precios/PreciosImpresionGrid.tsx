@@ -10,10 +10,11 @@ import { ConfirmSheet, useConfirmSheet } from "../ui/ConfirmSheet";
 import { formatCurrency } from "../../utils/formatters";
 import {
   labelPrecioImpresionTarifa,
-  TIPO_IMPRESION,
-  TIPO_IMPRESION_LABELS,
-  type PrecioImpresion,
-  type TipoImpresion
+  labelSlugLineaImpresion,
+  normalizarSlugLineaImpresion,
+  perfilTintaEfectivo,
+  type PerfilTintaImpresion,
+  type PrecioImpresion
 } from "../../types/precio";
 import type { Insumo } from "../../types/insumo";
 import type { Equipo } from "../../types/equipo";
@@ -52,16 +53,24 @@ export function PreciosImpresionGrid({
 
   const [crearAbierto, setCrearAbierto] = useState(false);
   const [draftNuevo, setDraftNuevo] = useState({
-    tipo: "bn" as TipoImpresion,
+    tipo: "bn",
+    perfil_tinta: "bn" as PerfilTintaImpresion,
     doble_faz: false,
-    precio: ""
+    precio: "",
+    nombre: ""
   });
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draftEdit, setDraftEdit] = useState({
     precio: "",
-    equipoId: "" as string
+    equipoId: "" as string,
+    perfil_tinta: "bn" as PerfilTintaImpresion
   });
+
+  const slugsExistentes = useMemo(
+    () => [...new Set(precios.map((p) => p.tipo))].sort(),
+    [precios]
+  );
 
   const [editRapidoId, setEditRapidoId] = useState<string | null>(null);
   const [valorRapido, setValorRapido] = useState("");
@@ -133,7 +142,8 @@ export function PreciosImpresionGrid({
     setEditandoId(p.id);
     setDraftEdit({
       precio: String(p.precio_venta),
-      equipoId: p.equipo_id ?? ""
+      equipoId: p.equipo_id ?? "",
+      perfil_tinta: perfilTintaEfectivo(p)
     });
   };
 
@@ -150,7 +160,8 @@ export function PreciosImpresionGrid({
     try {
       await preciosApi.actualizarPrecioImpresionCompleto(id, {
         precio_venta: precio,
-        equipo_id: draftEdit.equipoId === "" ? null : draftEdit.equipoId
+        equipo_id: draftEdit.equipoId === "" ? null : draftEdit.equipoId,
+        perfil_tinta: draftEdit.perfil_tinta
       });
       if (ganancia < 0) {
         showToast("PRECIO POR DEBAJO DEL COSTO VARIABLE ESTIMADO", "error");
@@ -181,13 +192,23 @@ export function PreciosImpresionGrid({
       showToast("Precio inválido", "error");
       return;
     }
+    const slug = normalizarSlugLineaImpresion(draftNuevo.tipo);
+    if (!slug || slug.length > 64) {
+      showToast(
+        "Código de línea inválido: usá letras minúsculas, números y _ (ej. candy_bar)",
+        "error"
+      );
+      return;
+    }
     setSaving(true);
     try {
       const row = await preciosApi.crearPrecioImpresion({
-        tipo: draftNuevo.tipo,
+        tipo: slug,
         doble_faz: draftNuevo.doble_faz,
         precio_venta: precio,
-        activo: true
+        activo: true,
+        nombre: draftNuevo.nombre.trim() || undefined,
+        perfil_tinta: draftNuevo.perfil_tinta
       });
       if (row.activo === false) {
         showToast(
@@ -199,8 +220,10 @@ export function PreciosImpresionGrid({
       }
       setDraftNuevo({
         tipo: "bn",
+        perfil_tinta: "bn",
         doble_faz: false,
-        precio: ""
+        precio: "",
+        nombre: ""
       });
       setCrearAbierto(false);
       await onReload();
@@ -248,8 +271,11 @@ export function PreciosImpresionGrid({
             Tarifas de impresión (ABM)
           </h3>
           <p className="text-[10px] text-slate-400 font-semibold mt-2 max-w-lg leading-snug">
-            Cada fila es una tarifa por <strong>tipo</strong> (B&amp;N / color) y{" "}
-            <strong>cara</strong> (simple / doble). Podés sumar varias filas;
+            Cada fila es una <strong>línea de producto</strong> (código único) y{" "}
+            <strong>cara</strong> (simple / doble). Creá líneas nuevas (ej.{" "}
+            <code className="text-amber-800">candy_bar</code>,{" "}
+            <code className="text-amber-800">pegatinas</code>) y enlazá{" "}
+            <strong>reglas</strong> e <strong>insumos</strong> a esa tarifa.
             solo una puede estar <strong>activa</strong> por combinación (la usa
             el cotizador). El costo variable viene de{" "}
             <strong>Reglas de negocio</strong>.
@@ -283,23 +309,40 @@ export function PreciosImpresionGrid({
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
             <div>
               <label className="text-[9px] font-black text-slate-400 uppercase">
-                Tipo
+                Código de línea (slug)
+              </label>
+              <input
+                type="text"
+                list="slug-lineas-impresion"
+                value={draftNuevo.tipo}
+                onChange={(e) =>
+                  setDraftNuevo((d) => ({ ...d, tipo: e.target.value }))
+                }
+                placeholder="candy_bar, pegatinas…"
+                className="mt-1 w-full sm:w-44 p-2.5 rounded-sm border border-amber-200 font-mono text-sm text-slate-900"
+              />
+              <datalist id="slug-lineas-impresion">
+                {slugsExistentes.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase">
+                Perfil tinta (costo motor)
               </label>
               <select
-                value={draftNuevo.tipo}
+                value={draftNuevo.perfil_tinta}
                 onChange={(e) =>
                   setDraftNuevo((d) => ({
                     ...d,
-                    tipo: e.target.value as TipoImpresion
+                    perfil_tinta: e.target.value as PerfilTintaImpresion
                   }))
                 }
-                className="mt-1 w-full sm:w-32 p-2.5 rounded-sm border border-amber-200 font-bold text-sm cursor-pointer"
+                className="mt-1 w-full sm:w-40 p-2.5 rounded-sm border border-amber-200 font-bold text-sm cursor-pointer"
               >
-                {TIPO_IMPRESION.map((t) => (
-                  <option key={t} value={t}>
-                    {TIPO_IMPRESION_LABELS[t]}
-                  </option>
-                ))}
+                <option value="bn">Tóner (B&amp;N)</option>
+                <option value="color">Tintas color</option>
               </select>
             </div>
             <label className="flex items-center gap-2 cursor-pointer pb-2">
@@ -318,6 +361,20 @@ export function PreciosImpresionGrid({
                 Doble faz
               </span>
             </label>
+            <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase">
+                Nombre (opcional)
+              </label>
+              <input
+                type="text"
+                value={draftNuevo.nombre}
+                onChange={(e) =>
+                  setDraftNuevo((d) => ({ ...d, nombre: e.target.value }))
+                }
+                placeholder="Ej. plancha glossy"
+                className="mt-1 w-full sm:w-44 p-2.5 rounded-sm border border-amber-200 text-sm font-semibold text-slate-800"
+              />
+            </div>
             <div>
               <label className="text-[9px] font-black text-slate-400 uppercase">
                 Precio venta / hoja
@@ -356,6 +413,15 @@ export function PreciosImpresionGrid({
       )}
 
       <div className="divide-y divide-slate-50">
+        {preciosOrdenados.length === 0 && (
+          <div className="px-4 py-10 text-center text-[10px] text-slate-500 font-semibold leading-relaxed max-w-md mx-auto">
+            Todavía no hay tarifas en esta lista. Si en la base de datos sí hay filas,
+            probá recargar la página o ejecutá en Supabase:{" "}
+            <code className="text-slate-700 bg-slate-100 px-1 rounded-sm">
+              NOTIFY pgrst, &apos;reload schema&apos;;
+            </code>
+          </div>
+        )}
         {preciosOrdenados.map((p) => {
           const costo = costoPorId.get(p.id) ?? 0;
           const avisoCosto: AvisoCostoTarifa =
@@ -418,6 +484,24 @@ export function PreciosImpresionGrid({
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase">
+                        Perfil tinta
+                      </label>
+                      <select
+                        value={draftEdit.perfil_tinta}
+                        onChange={(e) =>
+                          setDraftEdit((d) => ({
+                            ...d,
+                            perfil_tinta: e.target.value as PerfilTintaImpresion
+                          }))
+                        }
+                        className="mt-1 w-full sm:w-40 p-2 rounded-sm border border-blue-200 text-sm font-bold bg-white"
+                      >
+                        <option value="bn">Tóner (B&amp;N)</option>
+                        <option value="color">Tintas color</option>
+                      </select>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -442,8 +526,8 @@ export function PreciosImpresionGrid({
                     </div>
                   </div>
                   <p className="text-[9px] text-slate-400 font-semibold">
-                    {TIPO_IMPRESION_LABELS[p.tipo]} ·{" "}
-                    {p.doble_faz ? "Doble faz" : "Simple faz"} (no editable)
+                    {labelSlugLineaImpresion(p.tipo)} ·{" "}
+                    {p.doble_faz ? "Doble faz" : "Simple faz"} (slug no editable)
                   </p>
                 </div>
               ) : (
@@ -451,9 +535,11 @@ export function PreciosImpresionGrid({
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div
                       className={`w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0 ${
-                        p.tipo === "bn"
+                        perfilTintaEfectivo(p) === "bn"
                           ? "bg-slate-100 text-slate-500"
-                          : "bg-gradient-to-br from-cyan-100 to-pink-100 text-pink-600"
+                          : p.tipo === "stickers"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-gradient-to-br from-cyan-100 to-pink-100 text-pink-600"
                       }`}
                     >
                       <i

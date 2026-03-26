@@ -1,5 +1,6 @@
-export function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString("es-AR")}`;
+export function formatCurrency(amount: number | string | null | undefined): string {
+  const n = Number(amount);
+  return `$${(Number.isFinite(n) ? n : 0).toLocaleString("es-AR")}`;
 }
 
 export function formatDate(dateStr: string): string {
