@@ -251,7 +251,7 @@ export const preciosApi = {
       res = await insertar(min, PRECIOS_IMPRESION_SELECT_MINIMAL);
     }
     if (res.error) throw res.error;
-    const row = res.data as PrecioImpresion | null;
+    const row = res.data as unknown as PrecioImpresion | null;
     if (!row) throw new Error("Sin datos tras crear tarifa de impresión.");
     return mapPrecioImpresionRows([row])[0] as PrecioImpresion;
   },
