@@ -263,12 +263,21 @@ export function PedidosPage() {
     impreso: boolean,
     _pedidoId: string
   ) => {
+    const prevPedidos = pedidos;
+    setPedidos((curr) =>
+      curr.map((p) => ({
+        ...p,
+        pedido_items: (p.pedido_items ?? []).map((it) =>
+          it.id === itemId ? { ...it, impreso } : it
+        )
+      }))
+    );
     try {
       await api.updatePedidoItemPatch(itemId, { impreso });
       showToast(impreso ? "MARCADO COMO IMPRESO" : "MARCADO COMO NO IMPRESO");
-      await refresh();
     } catch (e) {
       console.error(e);
+      setPedidos(prevPedidos);
       showToast("ERROR AL ACTUALIZAR IMPRESIÓN", "error");
     }
   };
