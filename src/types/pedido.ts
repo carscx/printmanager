@@ -15,6 +15,8 @@ export interface PedidoItem {
   precio_anillado_id?: string | null;
   anillado_medida_mm?: number | null;
   doble_faz?: boolean;
+  /** Flag operativo para trabajos de impresión: no impacta estado del pedido. */
+  impreso?: boolean;
   // Descuentos y recargos
   descuento_porcentaje?: number | null;
   descuento_monto?: number | null;

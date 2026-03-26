@@ -19,7 +19,8 @@ export function normalizePedidoItemsForCart(items: PedidoItem[]): PedidoItem[] {
     anillado: raw.anillado ?? null,
     precio_unitario: Number(raw.precio_unitario ?? 0),
     observaciones: raw.observaciones ?? "",
-    solo_anillado: raw.solo_anillado ?? false
+    solo_anillado: raw.solo_anillado ?? false,
+    impreso: raw.impreso ?? false
   }));
 }
 

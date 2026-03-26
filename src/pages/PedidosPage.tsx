@@ -26,6 +26,7 @@ import {
 type DatePreset = "todo" | "hoy" | "semana" | "mes" | "custom";
 type TipoTrabajo = "bn" | "color" | "stickers" | "anillado" | "todos";
 type CobranzaFiltro = "todos" | "impago" | "pagado";
+type ImpresosFiltro = "todos" | "si" | "no";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -59,6 +60,7 @@ export function PedidosPage() {
   const [estado, setEstado] = useState<string>("activos");
   const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo>("todos");
   const [cobranza, setCobranza] = useState<CobranzaFiltro>("todos");
+  const [impresos, setImpresos] = useState<ImpresosFiltro>("todos");
   /** Texto en el input (no dispara carga hasta pulsar Buscar). */
   const [busquedaInput, setBusquedaInput] = useState("");
   /** Valor enviado al listado / API. */
@@ -167,7 +169,8 @@ export function PedidosPage() {
         : null,
       searchQuery: searchQuery.trim() ? searchQuery.trim() : null,
       tipoTrabajo: tipoTrabajo === "todos" ? null : tipoTrabajo,
-      cobranza: cobranza === "todos" ? null : cobranza
+      cobranza: cobranza === "todos" ? null : cobranza,
+      impresos: impresos === "todos" ? null : impresos
     };
   }, [
     dateRange.from,
@@ -176,7 +179,8 @@ export function PedidosPage() {
     busquedaAplicada,
     searchQuery,
     tipoTrabajo,
-    cobranza
+    cobranza,
+    impresos
   ]);
 
   const aplicarBusquedaClientePedido = useCallback(() => {
@@ -190,6 +194,7 @@ export function PedidosPage() {
     setEstado("activos");
     setTipoTrabajo("todos");
     setCobranza("todos");
+    setImpresos("todos");
     setBusquedaInput("");
     setBusquedaAplicada("");
     setSearchQuery("");
@@ -224,6 +229,7 @@ export function PedidosPage() {
     estado,
     tipoTrabajo,
     cobranza,
+    impresos,
     busquedaAplicada,
     searchQuery
   ]);
@@ -249,6 +255,21 @@ export function PedidosPage() {
     } catch (e) {
       console.error(e);
       showToast("ERROR AL ACTUALIZAR LA FORMA DE PAGO", "error");
+    }
+  };
+
+  const handleToggleImpresoItem = async (
+    itemId: string,
+    impreso: boolean,
+    _pedidoId: string
+  ) => {
+    try {
+      await api.updatePedidoItemPatch(itemId, { impreso });
+      showToast(impreso ? "MARCADO COMO IMPRESO" : "MARCADO COMO NO IMPRESO");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      showToast("ERROR AL ACTUALIZAR IMPRESIÓN", "error");
     }
   };
 
@@ -584,6 +605,42 @@ export function PedidosPage() {
                   className="w-full p-3 rounded-sm bg-white border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
+              <div className="pt-1 flex items-center justify-between gap-3 rounded-sm border border-slate-200 bg-white px-3 py-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.14em]">
+                  Impresos
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={impresos === "si"}
+                  onClick={() =>
+                    setImpresos((v) =>
+                      v === "todos" ? "no" : v === "no" ? "si" : "todos"
+                    )
+                  }
+                  className={`relative inline-flex h-6 w-12 rounded-full transition-colors ${
+                    impresos === "si"
+                      ? "bg-emerald-500"
+                      : impresos === "no"
+                        ? "bg-slate-400"
+                        : "bg-blue-400"
+                  }`}
+                  title={`Filtro impresos: ${impresos === "si" ? "Sí" : impresos === "no" ? "No" : "Todos"}`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform mt-0.5 ${
+                      impresos === "si"
+                        ? "translate-x-6"
+                        : impresos === "no"
+                          ? "translate-x-0.5"
+                          : "translate-x-3"
+                    }`}
+                  />
+                </button>
+                <span className="text-[10px] font-black text-slate-600 min-w-[42px] text-right">
+                  {impresos === "si" ? "Sí" : impresos === "no" ? "No" : "Todos"}
+                </span>
+              </div>
             </div>
           </details>
         </div>
@@ -658,6 +715,40 @@ export function PedidosPage() {
               className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>
+          <div className="flex items-center justify-between gap-3 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.14em]">
+              Impresos
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={impresos === "si"}
+              onClick={() =>
+                setImpresos((v) => (v === "todos" ? "no" : v === "no" ? "si" : "todos"))
+              }
+              className={`relative inline-flex h-6 w-12 rounded-full transition-colors ${
+                impresos === "si"
+                  ? "bg-emerald-500"
+                  : impresos === "no"
+                    ? "bg-slate-400"
+                    : "bg-blue-400"
+              }`}
+              title={`Filtro impresos: ${impresos === "si" ? "Sí" : impresos === "no" ? "No" : "Todos"}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform mt-0.5 ${
+                  impresos === "si"
+                    ? "translate-x-6"
+                    : impresos === "no"
+                      ? "translate-x-0.5"
+                      : "translate-x-3"
+                }`}
+              />
+            </button>
+            <span className="text-[10px] font-black text-slate-600 min-w-[42px] text-right">
+              {impresos === "si" ? "Sí" : impresos === "no" ? "No" : "Todos"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -676,6 +767,7 @@ export function PedidosPage() {
             onDescargarControlPdf={handleDescargarControlPdf}
             puedeEditarFormaPago={puedeEditarFormaPago}
             onActualizarFormaPago={handleActualizarFormaPago}
+            onToggleImpresoItem={handleToggleImpresoItem}
           />
         )}
       </div>

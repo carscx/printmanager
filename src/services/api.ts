@@ -25,6 +25,7 @@ export type HistorialFiltros = {
   searchQuery?: string | null;
   tipoTrabajo?: "bn" | "color" | "stickers" | "anillado" | null;
   cobranza?: "todos" | "impago" | "pagado" | null;
+  impresos?: "todos" | "si" | "no" | null;
 };
 
 /** Solo dígitos opcionalmente con # al inicio → número de pedido público. */
@@ -54,6 +55,17 @@ function applyBusquedaClientePedido(query: any, raw: string | null | undefined) 
   return query.ilike("cliente", `%${q}%`);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyImpresosHistorial(
+  query: any,
+  impresos: "todos" | "si" | "no" | null | undefined
+) {
+  if (!impresos || impresos === "todos") return query;
+  // Solo aplica sobre trabajos con impresión.
+  query = query.not("pedido_items.precio_impresion_id", "is", null);
+  return query.eq("pedido_items.impreso", impresos === "si");
+}
+
 /** Mapeo a `pedido_items`: volumen = paginas × copias (no existe `cantidad`); anillado `anillado_medida_mm`. */
 function mapItemToDB(it: PedidoItem, pedidoId: string) {
   return {
@@ -73,7 +85,8 @@ function mapItemToDB(it: PedidoItem, pedidoId: string) {
     precio_impresion_id: it.precio_impresion_id ?? null,
     precio_anillado_id: it.precio_anillado_id ?? null,
     anillado_medida_mm: it.anillado_medida_mm ?? null,
-    doble_faz: it.doble_faz ?? false
+    doble_faz: it.doble_faz ?? false,
+    impreso: it.impreso ?? false
   };
 }
 
@@ -127,7 +140,8 @@ export const api = {
       busquedaClientePedido,
       searchQuery,
       tipoTrabajo,
-      cobranza
+      cobranza,
+      impresos
     } = params;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,6 +202,7 @@ export const api = {
     }
 
     query = applyCobranza(query);
+    query = applyImpresosHistorial(query, impresos);
 
     // Búsqueda libre: cliente u observaciones, o nombre_archivo.
     if (q) {
@@ -222,6 +237,7 @@ export const api = {
           query = query.not("pedido_items.anillado", "is", null);
         }
         query = applyCobranza(query);
+        query = applyImpresosHistorial(query, impresos);
       }
     }
 
@@ -339,6 +355,11 @@ export const api = {
   /** Actualización parcial de cabecera (transiciones de máquina de estados). */
   async updatePedidoPatch(id: string, patch: Record<string, unknown>) {
     const { error } = await sb.from("pedidos").update(patch).eq("id", id);
+    if (error) throw error;
+  },
+
+  async updatePedidoItemPatch(id: string, patch: Record<string, unknown>) {
+    const { error } = await sb.from("pedido_items").update(patch).eq("id", id);
     if (error) throw error;
   },
 

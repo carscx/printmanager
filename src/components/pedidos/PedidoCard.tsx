@@ -23,6 +23,11 @@ interface PedidoCardProps {
     id: string,
     patch: Record<string, unknown>
   ) => Promise<void>;
+  onToggleImpresoItem?: (
+    itemId: string,
+    impreso: boolean,
+    pedidoId: string
+  ) => Promise<void>;
 }
 
 export function PedidoCard({
@@ -35,10 +40,12 @@ export function PedidoCard({
   onWA,
   onDescargarControlPdf,
   puedeEditarFormaPago = false,
-  onActualizarFormaPago
+  onActualizarFormaPago,
+  onToggleImpresoItem
 }: PedidoCardProps) {
   const [mostrarTodosLosItems, setMostrarTodosLosItems] = useState(false);
   const [guardandoForma, setGuardandoForma] = useState(false);
+  const [guardandoImpresoId, setGuardandoImpresoId] = useState<string | null>(null);
   const estadoRaw = normalizarEstadoPedido(p.estado);
 
   const borderConfig: Record<EstadoPedido, string> = {
@@ -141,6 +148,16 @@ export function PedidoCard({
 
   const itemsVisibles = mostrarTodosLosItems ? items : items.slice(0, 3);
 
+  const toggleImpresoItem = async (itemId: string, impreso: boolean) => {
+    if (!onToggleImpresoItem) return;
+    setGuardandoImpresoId(itemId);
+    try {
+      await onToggleImpresoItem(itemId, impreso, p.id);
+    } finally {
+      setGuardandoImpresoId(null);
+    }
+  };
+
   return (
     <div
       className={`bg-white rounded-sm shadow-sm border border-gray-100 border-l-[10px] ${currentBorder} p-5 mb-4 transition-all hover:shadow-md animate-slide-in-right min-w-0 overflow-hidden`}
@@ -236,7 +253,7 @@ export function PedidoCard({
           {itemsVisibles.map((it, idx) => (
             <p
               key={idx}
-              className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2"
+              className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2 flex-wrap"
             >
               <span className="w-1 h-1 bg-slate-300 rounded-full" />
               {it.paginas || 0} PAG{" "}
@@ -251,6 +268,42 @@ export function PedidoCard({
                 Number(it.descuento_monto) > 0 && (
                   <> | -{formatCurrency(Number(it.descuento_monto))} DESC</>
                 )}
+              {it.precio_impresion_id && (
+                <>
+                  <span>|</span>
+                  <span className="inline-flex items-center gap-2 text-[10px] font-black text-slate-500">
+                    Impreso
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={Boolean(it.impreso)}
+                      disabled={
+                        !it.id || guardandoImpresoId === it.id || !onToggleImpresoItem
+                      }
+                      onClick={() => {
+                        if (!it.id) return;
+                        void toggleImpresoItem(it.id, !Boolean(it.impreso));
+                      }}
+                      className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
+                        it.impreso ? "bg-emerald-500" : "bg-slate-300"
+                      } ${
+                        !it.id || guardandoImpresoId === it.id || !onToggleImpresoItem
+                          ? "opacity-60 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-0.5 ${
+                          it.impreso ? "translate-x-5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-[9px]">
+                      {it.impreso ? "Sí" : "No"}
+                    </span>
+                  </span>
+                </>
+              )}
             </p>
           ))}
           {items.length > 3 && (

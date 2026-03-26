@@ -466,6 +466,7 @@ export function NuevoPedidoPage() {
       anillado_medida_mm:
         espiralSel?.medida_mm ?? anilladoSel?.medida_mm ?? null,
       doble_faz: soloAnillado ? false : dobleFaz,
+      impreso: prevLine?.impreso ?? false,
       observaciones: itemNotas.trim(),
       _anillado_costo: anilladoSel ? anilladoSel.precio_venta : 0,
       // Guardar descuento/recargo en el ítem

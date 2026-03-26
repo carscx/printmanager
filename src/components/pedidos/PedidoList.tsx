@@ -15,6 +15,11 @@ interface PedidoListProps {
     id: string,
     patch: Record<string, unknown>
   ) => Promise<void>;
+  onToggleImpresoItem?: (
+    itemId: string,
+    impreso: boolean,
+    pedidoId: string
+  ) => Promise<void>;
 }
 
 export function PedidoList({
@@ -27,7 +32,8 @@ export function PedidoList({
   onWA,
   onDescargarControlPdf,
   puedeEditarFormaPago,
-  onActualizarFormaPago
+  onActualizarFormaPago,
+  onToggleImpresoItem
 }: PedidoListProps) {
   if (pedidos.length === 0) {
     return (
@@ -52,6 +58,7 @@ export function PedidoList({
           onDescargarControlPdf={onDescargarControlPdf}
           puedeEditarFormaPago={puedeEditarFormaPago}
           onActualizarFormaPago={onActualizarFormaPago}
+          onToggleImpresoItem={onToggleImpresoItem}
         />
       ))}
     </div>
