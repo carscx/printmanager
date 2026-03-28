@@ -214,7 +214,12 @@ export function InsumoForm({
       setEquivVenta(String(RENDIMIENTO_MAESTRO_ESPIRAL));
     } else if (!isEdit) {
       setEquivVenta((v) =>
-        v === "500" || v === "1800" || v === "30000" || v === "30" || v === "50"
+        v === "500" ||
+          v === "1800" ||
+          v === "30000" ||
+          v === "30" ||
+          v === "25" ||
+          v === "50"
           ? "1"
           : v
       );
@@ -532,8 +537,11 @@ export function InsumoForm({
           <strong>Tinta:</strong> stock en <strong>ml</strong> en depósito;{" "}
           <strong>precio por litro</strong> de compra ($15.000 = un litro). El valor
           del inventario = (ml ÷ 1000) × precio litro. El maestro{" "}
-          <strong>30 páginas por ml</strong> solo aplica al costo de impresión, no al
-          valor de stock.
+          <strong>
+            {RENDIMIENTO_MAESTRO_TINTA} páginas por ml
+          </strong>{" "}
+          (conservador) aplica al costo de impresión y al descuento de stock por
+          pedido; no cambia el valor de inventario en ml.
         </p>
       )}
 

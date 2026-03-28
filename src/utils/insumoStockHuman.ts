@@ -15,7 +15,7 @@ function fmtCant(n: number): string {
 
 /**
  * “Bultos” para valorar: resmas/cartuchos; tinta = litros (stock ml ÷ 1000).
- * Tinta: rendimiento = páginas/ml (maestro 30); solo costeo de impresión, no valor de stock.
+ * Tinta: rendimiento = páginas/ml (maestro conservador en bomCosto); costeo/stock pedidos.
  */
 export function bultosEnStock(ins: Insumo): number {
   const s = Number(ins.stock_actual) || 0;

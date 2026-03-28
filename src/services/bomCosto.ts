@@ -8,11 +8,11 @@ export const REGLAS_COSTO_FACTOR_SEGURIDAD = 1.1;
 
 /** Maestros de rendimiento (unidades de consumo por lote de compra). */
 export const RENDIMIENTO_MAESTRO_TONER = 1800; // páginas por cartucho
-/** Páginas impresas por ml de tinta en depósito (costo impresión ≠ valor stock). */
-export const RENDIMIENTO_MAESTRO_TINTA = 30;
+/** Páginas impresas por ml de tinta en depósito (costo impresión ≠ valor stock). Conservador. */
+export const RENDIMIENTO_MAESTRO_TINTA = 25;
 /** Stock de tinta en BD = mililitros; precio_compra = $ por litro; 1000 ml = 1 L. */
 export const ML_POR_LITRO_TINTA = 1000;
-/** Derivado: páginas por litro = 30 × 1000 (solo referencia / compat SQL). */
+/** Derivado: páginas por litro = maestro × 1000 (solo referencia / compat SQL). */
 export const PAGINAS_POR_LITRO_TINTA =
   RENDIMIENTO_MAESTRO_TINTA * ML_POR_LITRO_TINTA;
 export const RENDIMIENTO_MAESTRO_PAPEL = 500; // hojas por resma
