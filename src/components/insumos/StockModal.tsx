@@ -1,22 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { ActionSheet, ActionSheetTrigger } from "../ui/ActionSheet";
-import type { Insumo, StockTipo, StockMotivo } from "../../types/insumo";
+import type {
+  Insumo,
+  StockTipo,
+  StockMotivo,
+  StockMovimiento
+} from "../../types/insumo";
 import { STOCK_TIPO_LABELS, STOCK_MOTIVO_LABELS } from "../../types/insumo";
+import { insumosApi } from "../../services/insumosApi";
 import {
   etiquetaStockCategoria,
-  stockHumanoTexto
+  stockFisicoTexto
 } from "../../utils/insumoStockHuman";
 import { showToast } from "../ui/Toast";
-import { rendimientoEfectivoInsumo } from "../../services/bomCosto";
+import {
+  ML_POR_LITRO_TINTA,
+  rendimientoEfectivoInsumo
+} from "../../services/bomCosto";
 
 function factorHumanoABd(insumo: Insumo): number {
   if (insumo.categoria === "papel" || insumo.categoria === "toner") {
     return rendimientoEfectivoInsumo(insumo);
   }
-  /** Tinta: stock en BD = ml; la cantidad humana es ml → factor 1. */
+  /** Tinta: cantidad humana en litros; BD = ml. */
   if (insumo.categoria === "tinta") {
-    return 1;
+    return ML_POR_LITRO_TINTA;
   }
   return 1;
 }
@@ -63,6 +72,17 @@ const MOTIVO_OPTS = MOTIVOS.map((m) => ({
   label: STOCK_MOTIVO_LABELS[m]
 }));
 
+function textoCantidadMovimiento(m: StockMovimiento): string {
+  const n = Number(m.cantidad);
+  if (!Number.isFinite(n)) return "—";
+  if (m.tipo === "salida") {
+    const abs = Math.abs(n);
+    return n < 0 ? String(n) : `−${abs}`;
+  }
+  if (m.tipo === "entrada" && n > 0) return `+${n}`;
+  return String(n);
+}
+
 export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
   const [tipo, setTipo] = useState<StockTipo>("entrada");
   const [motivo, setMotivo] = useState<StockMotivo>("compra");
@@ -71,6 +91,24 @@ export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
   const [precioCompra, setPrecioCompra] = useState("");
   const [saving, setSaving] = useState(false);
   const [sheetMotivo, setSheetMotivo] = useState(false);
+  const [historial, setHistorial] = useState<StockMovimiento[]>([]);
+  const [historialLoading, setHistorialLoading] = useState(true);
+
+  const cargarHistorial = useCallback(async () => {
+    setHistorialLoading(true);
+    try {
+      const rows = await insumosApi.fetchMovimientos(insumo.id, 80);
+      setHistorial(rows);
+    } catch {
+      setHistorial([]);
+    } finally {
+      setHistorialLoading(false);
+    }
+  }, [insumo.id]);
+
+  useEffect(() => {
+    void cargarHistorial();
+  }, [cargarHistorial]);
 
   const requierePrecioCompra =
     tipo === "entrada" && motivo === "compra";
@@ -131,7 +169,7 @@ export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
         <p className="text-xs text-slate-400 mt-1">
           Stock actual:{" "}
           <span className="font-black text-blue-600">
-            {stockHumanoTexto(insumo)}
+            {stockFisicoTexto(insumo)}
           </span>
         </p>
       </div>
@@ -177,8 +215,11 @@ export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
           </label>
           {tipo === "entrada" && motivo === "compra" && (
             <p className="text-[9px] text-slate-500 font-semibold px-0.5">
-              Se suma al stock en bodega: cantidad × rendimiento (la cuenta la hace
-              esta pantalla, la base guarda el total).
+              {insumo.categoria === "papel"
+                ? "Se suma al stock en bodega: resmas × hojas/resma → total en hojas (unidad en base)."
+                : insumo.categoria === "tinta"
+                  ? "Tinta: cantidad en litros de esta compra; se suman a depósito en ml (litros × 1000)."
+                  : "Se suma al stock en bodega: cartuchos × rendimiento en carillas (la base guarda el total)."}
             </p>
           )}
           <input
@@ -202,7 +243,7 @@ export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
               Nuevo stock
             </p>
             <p className="text-lg font-black text-blue-700">
-              {stockHumanoTexto({ ...insumo, stock_actual: nuevoStock })}
+              {stockFisicoTexto({ ...insumo, stock_actual: nuevoStock })}
             </p>
           </div>
         )}
@@ -276,6 +317,59 @@ export function StockModal({ insumo, onSave, onClose }: StockModalProps) {
           </button>
         </div>
       </form>
+
+      <div className="mt-6 pt-4 border-t border-slate-200">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+          Historial de movimientos
+        </p>
+        {historialLoading ? (
+          <p className="text-xs text-slate-400 font-semibold">
+            <i className="fas fa-circle-notch fa-spin mr-1" />
+            Cargando…
+          </p>
+        ) : historial.length === 0 ? (
+          <p className="text-xs text-slate-400 font-semibold">
+            Sin movimientos registrados.
+          </p>
+        ) : (
+          <ul className="max-h-52 overflow-y-auto space-y-2 pr-1 text-[11px]">
+            {historial.map((m) => (
+              <li
+                key={m.id}
+                className="rounded-sm bg-slate-50 border border-slate-100 px-2 py-1.5"
+              >
+                <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 font-bold text-slate-700">
+                  <span>
+                    {new Date(m.created_at).toLocaleString("es-AR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </span>
+                  <span
+                    className={
+                      m.tipo === "entrada"
+                        ? "text-emerald-700"
+                        : m.tipo === "salida"
+                          ? "text-red-600"
+                          : "text-amber-700"
+                    }
+                  >
+                    {STOCK_TIPO_LABELS[m.tipo]} ·{" "}
+                    {textoCantidadMovimiento(m)}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-semibold">
+                  {STOCK_MOTIVO_LABELS[m.motivo]}
+                  {m.notas ? ` · ${m.notas}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </BottomSheet>
     <ActionSheet
       open={sheetMotivo}

@@ -507,6 +507,14 @@ export function AdminDashboardPage() {
           <i className="fas fa-receipt mr-2" />
           Gastos fijos
         </button>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/toner-modelos")}
+          className="px-4 py-3 rounded-sm border border-slate-200 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50"
+        >
+          <i className="fas fa-circle-nodes mr-2" />
+          Perfiles tóner
+        </button>
       </div>
     </section>
   );

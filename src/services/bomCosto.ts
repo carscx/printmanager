@@ -7,9 +7,10 @@ import type { Insumo, InsumoCategoria } from "../types/insumo";
 export const REGLAS_COSTO_FACTOR_SEGURIDAD = 1.1;
 
 /** Maestros de rendimiento (unidades de consumo por lote de compra). */
-export const RENDIMIENTO_MAESTRO_TONER = 1800; // páginas por cartucho
-/** Páginas impresas por ml de tinta en depósito (costo impresión ≠ valor stock). Conservador. */
-export const RENDIMIENTO_MAESTRO_TINTA = 25;
+/** ~1000 pág A4 a cobertura ~5 % (ISO 19752 / uso oficina) por cartucho típico. */
+export const RENDIMIENTO_MAESTRO_TONER = 1000;
+/** Páginas impresas por ml de tinta (stock en ml; ~1 ml cada 30 hojas ≈ 30 pág/ml). */
+export const RENDIMIENTO_MAESTRO_TINTA = 30;
 /** Stock de tinta en BD = mililitros; precio_compra = $ por litro; 1000 ml = 1 L. */
 export const ML_POR_LITRO_TINTA = 1000;
 /** Derivado: páginas por litro = maestro × 1000 (solo referencia / compat SQL). */
@@ -47,7 +48,33 @@ export function carillasPorMlTinta(insumo: Insumo): number {
   return rendimientoEfectivoInsumo(insumo);
 }
 
+/**
+ * Páginas equivalentes por cartucho a partir de física: g de tóner en el cartucho
+ * y mg depositados por cara impresa (A4, cobertura de referencia).
+ */
+export function tonerPaginasPorCartuchoDesdeFisica(
+  gramosPorCartucho: number,
+  mgPorCara: number
+): number {
+  if (
+    !Number.isFinite(gramosPorCartucho) ||
+    gramosPorCartucho <= 0 ||
+    !Number.isFinite(mgPorCara) ||
+    mgPorCara <= 0
+  ) {
+    return RENDIMIENTO_MAESTRO_TONER;
+  }
+  return Math.max(1, Math.round((gramosPorCartucho * 1000) / mgPorCara));
+}
+
 export function rendimientoEfectivoInsumo(insumo: Insumo): number {
+  if (insumo.categoria === "toner") {
+    const g = Number(insumo.toner_gramos_por_cartucho);
+    const mg = Number(insumo.toner_mg_por_cara);
+    if (Number.isFinite(g) && g > 0 && Number.isFinite(mg) && mg > 0) {
+      return tonerPaginasPorCartuchoDesdeFisica(g, mg);
+    }
+  }
   const r = Number(insumo.rendimiento);
   if (Number.isFinite(r) && r > 0) return r;
   switch (insumo.categoria) {
@@ -72,6 +99,32 @@ export function rendimientoEfectivoInsumo(insumo: Insumo): number {
   );
   if (Number.isFinite(eq) && eq > 0) return eq;
   return 0;
+}
+
+/**
+ * Consumo de stock por **una cara impresa** con coeficiente `cantidad_usada`
+ * (reglas de impresión). Papel: por **hoja física** del ítem usa el mismo coef. en hojas.
+ * Alineado a `rpc_explotar_bom_pedido` + `fn_normalizar_cantidad_stock_pii` (tinta).
+ */
+export function estimacionStockPorCaraReglaImpresion(
+  ins: Insumo,
+  cantidadUsada: number
+): { unidad: "hojas" | "carillas" | "ml" | "otro"; valor: number } | null {
+  const c = Number(cantidadUsada);
+  if (!Number.isFinite(c) || c <= 0) return null;
+  switch (ins.categoria) {
+    case "papel":
+      return { unidad: "hojas", valor: c };
+    case "toner":
+      return { unidad: "carillas", valor: c };
+    case "tinta": {
+      const pagPorMl = rendimientoEfectivoInsumo(ins);
+      if (pagPorMl <= 0) return null;
+      return { unidad: "ml", valor: c / pagPorMl };
+    }
+    default:
+      return { unidad: "otro", valor: c };
+  }
 }
 
 /**

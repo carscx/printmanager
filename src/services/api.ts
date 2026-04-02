@@ -66,6 +66,45 @@ function applyImpresosHistorial(
   return query.eq("pedido_items.impreso", impresos === "si");
 }
 
+/** Pedidos que tienen al menos un ítem B/N (`B/N` o `B&N` en texto). Sin `or()` en PostgREST (PGRST100 con `/`). */
+async function fetchPedidoIdsConTipoBn(): Promise<string[]> {
+  const [r1, r2] = await Promise.all([
+    sb.from("pedido_items").select("pedido_id").ilike("tipo_impresion", "%B/N%"),
+    sb.from("pedido_items").select("pedido_id").ilike("tipo_impresion", "%B&N%")
+  ]);
+  if (r1.error) throw r1.error;
+  if (r2.error) throw r2.error;
+  const s = new Set<string>();
+  for (const r of [...(r1.data ?? []), ...(r2.data ?? [])]) {
+    s.add((r as { pedido_id: string }).pedido_id);
+  }
+  return [...s];
+}
+
+/**
+ * Incluir pedidos donde **existe al menos un** `pedido_items` que cumple el tipo (semántica EXISTS / inner join).
+ * B/N: se filtra en `fetchHistorial` con `.in(id, …)` vía `fetchPedidoIdsConTipoBn()` (no añadir condición aquí).
+ */
+function applyTipoTrabajoHistorial(
+  query: any,
+  tipoTrabajo: HistorialFiltros["tipoTrabajo"]
+) {
+  if (!tipoTrabajo) return query;
+  if (tipoTrabajo === "bn") {
+    return query;
+  }
+  if (tipoTrabajo === "color") {
+    return query.ilike("pedido_items.tipo_impresion", "%COLOR%");
+  }
+  if (tipoTrabajo === "stickers") {
+    return query.ilike("pedido_items.tipo_impresion", "%STICKERS%");
+  }
+  if (tipoTrabajo === "anillado") {
+    return query.not("pedido_items.anillado", "is", null);
+  }
+  return query;
+}
+
 /** Mapeo a `pedido_items`: volumen = paginas × copias (no existe `cantidad`); anillado `anillado_medida_mm`. */
 function mapItemToDB(it: PedidoItem, pedidoId: string) {
   return {
@@ -163,6 +202,32 @@ export const api = {
     const rangeFrom = page * pageSize;
     const rangeTo = rangeFrom + pageSize - 1;
 
+    let pedidoIdsBn: string[] | null = null;
+    if (tipoTrabajo === "bn") {
+      pedidoIdsBn = await fetchPedidoIdsConTipoBn();
+      if (pedidoIdsBn.length === 0) {
+        return { pedidos: [], total: 0 };
+      }
+    }
+
+    /**
+     * Cualquier filtro sobre `pedido_items` en la misma petición hace que PostgREST restrinja
+     * el embed. Primera consulta: solo `id` (+ inner join para EXISTS); segunda: pedido completo
+     * con **todos** los ítems (sin filtrar líneas en la card).
+     * B/N solo (sin filtro impresos): ids vienen de prefetch → `select id` sin `!inner`.
+     */
+    const needsHistorialDosPasos =
+      Boolean(tipoTrabajo) || impresos === "si" || impresos === "no";
+    const bnSoloViaPrefetch =
+      tipoTrabajo === "bn" &&
+      (impresos === "todos" || impresos == null || impresos === undefined);
+    /** PGRST108: no se puede filtrar por `pedido_items.*` sin incluir el embed en `select`. */
+    const selectHistorial = bnSoloViaPrefetch
+      ? "id"
+      : needsHistorialDosPasos
+        ? "id,pedido_items!inner(id)"
+        : "*,pedido_items(*)";
+
     // Para búsqueda libre por nombre_archivo necesitamos mapear pedido_id desde pedido_items.
     let pedidoIdsFromItems: string[] | null = null;
     const q = (searchQuery || "").trim();
@@ -179,9 +244,10 @@ export const api = {
       // Dejamos pedidoIdsFromItems = [] para que el OR no bloquee; se maneja abajo.
     }
 
-    let query = sb
-      .from("pedidos")
-      .select("*, pedido_items(*)", { count: "exact" });
+    let query = sb.from("pedidos").select(selectHistorial, { count: "exact" });
+    if (pedidoIdsBn) {
+      query = query.in("id", pedidoIdsBn);
+    }
 
     // Filtros principales
     if (fromDate) query = query.gte("created_at", fromDate);
@@ -189,17 +255,7 @@ export const api = {
     query = applyEstadoHistorial(query, estado);
     query = applyBusquedaClientePedido(query, busquedaClientePedido);
 
-    // Tipo de trabajo: basado en items embebidos (filtrado por existencia)
-    // Nota: PostgREST permite filtros en relaciones; aquí usamos un filtro simple por ilike sobre tipo_impresion/anillado.
-    if (tipoTrabajo === "bn") {
-      query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
-    } else if (tipoTrabajo === "color") {
-      query = query.ilike("pedido_items.tipo_impresion", "%COLOR%");
-    } else if (tipoTrabajo === "stickers") {
-      query = query.ilike("pedido_items.tipo_impresion", "%STICKERS%");
-    } else if (tipoTrabajo === "anillado") {
-      query = query.not("pedido_items.anillado", "is", null);
-    }
+    query = applyTipoTrabajoHistorial(query, tipoTrabajo);
 
     query = applyCobranza(query);
     query = applyImpresosHistorial(query, impresos);
@@ -216,10 +272,18 @@ export const api = {
         // PostgREST 'or' no soporta 'in' en la misma cadena de forma simple,
         // así que aplicamos un filtro adicional que amplía el set con un OR equivalente:
         // id=in.(...) OR cliente/observaciones...
+        const idsArchivoBn =
+          pedidoIdsBn && pedidoIdsFromItems.length > 0
+            ? pedidoIdsFromItems.filter((id) => pedidoIdsBn.includes(id))
+            : pedidoIdsFromItems;
+        const idsParaIn =
+          pedidoIdsBn && idsArchivoBn.length === 0
+            ? pedidoIdsBn
+            : idsArchivoBn;
         query = sb
           .from("pedidos")
-          .select("*, pedido_items(*)", { count: "exact" })
-          .in("id", pedidoIdsFromItems)
+          .select(selectHistorial, { count: "exact" })
+          .in("id", idsParaIn)
           .or(`cliente.ilike.%${q}%,observaciones.ilike.%${q}%`);
 
         // Reaplicar filtros previos sobre esta query reconstruida
@@ -227,15 +291,7 @@ export const api = {
         if (toDate) query = query.lte("created_at", toDate);
         query = applyEstadoHistorial(query, estado);
         query = applyBusquedaClientePedido(query, busquedaClientePedido);
-        if (tipoTrabajo === "bn") {
-          query = query.ilike("pedido_items.tipo_impresion", "%B/N%");
-        } else if (tipoTrabajo === "color") {
-          query = query.ilike("pedido_items.tipo_impresion", "%COLOR%");
-        } else if (tipoTrabajo === "stickers") {
-          query = query.ilike("pedido_items.tipo_impresion", "%STICKERS%");
-        } else if (tipoTrabajo === "anillado") {
-          query = query.not("pedido_items.anillado", "is", null);
-        }
+        query = applyTipoTrabajoHistorial(query, tipoTrabajo);
         query = applyCobranza(query);
         query = applyImpresosHistorial(query, impresos);
       }
@@ -245,7 +301,29 @@ export const api = {
 
     const { data, error, count } = await query;
     if (error) throw error;
-    return { pedidos: (data ?? []) as Pedido[], total: count ?? 0 };
+
+    const rawPrimera = (data ?? []) as unknown;
+
+    if (!needsHistorialDosPasos) {
+      return { pedidos: rawPrimera as Pedido[], total: count ?? 0 };
+    }
+
+    const ids = (rawPrimera as { id: string }[]).map((r) => r.id);
+    if (ids.length === 0) {
+      return { pedidos: [], total: count ?? 0 };
+    }
+
+    const { data: fullRows, error: errFull } = await sb
+      .from("pedidos")
+      .select("*,pedido_items(*)")
+      .in("id", ids);
+    if (errFull) throw errFull;
+
+    const orderMap = new Map(ids.map((id, i) => [id, i]));
+    const pedidos = ((fullRows ?? []) as Pedido[]).sort(
+      (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
+    );
+    return { pedidos, total: count ?? 0 };
   },
 
   /**

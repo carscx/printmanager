@@ -60,8 +60,15 @@ export interface Insumo {
   /**
    * Unidades de consumo por lote de compra (papel: hojas/resma; tóner: pág/cartucho;
    * tinta: páginas/ml; espiral: u/lote). Tinta: costo página = (precio_litro/1000)/rendimiento.
+   * Tóner: si hay `toner_*`, el rendimiento se deriva de gramos/cartucho y mg/cara.
    */
   rendimiento: number | null;
+  /** Tóner: gramos de polvo por cartucho (típ. ~60). */
+  toner_gramos_por_cartucho?: number | null;
+  /** Tóner: miligramos depositados por cara impresa A4 (referencia; típ. 40–120 mg texto). */
+  toner_mg_por_cara?: number | null;
+  /** Tóner: perfil del catálogo `toner_modelos` (null si los valores son solo manuales). */
+  toner_modelo_id?: string | null;
   hojas_por_unidad: number | null;
   precio_compra: number;
   /** Modelo simple: lote y unidades (alias de precio_compra / UVE si no vienen de DB). */

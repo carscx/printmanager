@@ -25,10 +25,17 @@ import {
   RENDIMIENTO_MAESTRO_TINTA,
   RENDIMIENTO_MAESTRO_TONER,
   ML_POR_LITRO_TINTA,
-  rendimientoEfectivoInsumo
+  rendimientoEfectivoInsumo,
+  tonerPaginasPorCartuchoDesdeFisica
 } from "../../services/bomCosto";
 import { formatCurrency } from "../../utils/formatters";
 import { InsumoValidacionError } from "../../utils/insumoValidacion";
+import { fetchTonerModelosActivos } from "../../services/tonerModelosApi";
+import { TONER_MODELOS_FALLBACK } from "../../data/tonerModelosFallback";
+import {
+  type TonerModeloReferencia,
+  esTonerModeloIdPersistible
+} from "../../types/tonerModelo";
 
 interface InsumoFormProps {
   insumo?: Insumo | null;
@@ -59,11 +66,7 @@ const CATEGORIAS_RENDIMIENTO_OBLIGA_CONTENIDO: InsumoCategoria[] = [
 const CATEGORIAS_CON_HOJAS: InsumoCategoria[] = ["papel"];
 
 /** Rendimiento fijado por maestro (SQL + motor de costos); no editable salvo papel (hojas/resma). */
-const CATEGORIAS_RENDIMIENTO_MAESTRO: InsumoCategoria[] = [
-  "toner",
-  "tinta",
-  "espiral"
-];
+const CATEGORIAS_RENDIMIENTO_MAESTRO: InsumoCategoria[] = ["tinta", "espiral"];
 
 function rendimientoMaestroNum(cat: InsumoCategoria): number | null {
   switch (cat) {
@@ -83,7 +86,7 @@ function rendimientoMaestroNum(cat: InsumoCategoria): number | null {
 function stockHumanDesdeDb(ins: Insumo, key: "stock_actual" | "stock_minimo"): string {
   const v = Number(ins[key]) || 0;
   if (ins.categoria === "tinta") {
-    return String(v);
+    return String(v / ML_POR_LITRO_TINTA);
   }
   if (ins.categoria === "papel" || ins.categoria === "toner") {
     const r = rendimientoEfectivoInsumo(ins);
@@ -140,6 +143,29 @@ export function InsumoForm({
   );
   const [color, setColor] = useState(insumo?.color ?? "");
   const [tipoPapel, setTipoPapel] = useState(insumo?.tipo_papel ?? "");
+  const [tonerGramos, setTonerGramos] = useState<string>(() => {
+    if (insumo?.categoria === "toner" && insumo.toner_gramos_por_cartucho != null) {
+      return String(insumo.toner_gramos_por_cartucho);
+    }
+    return "60";
+  });
+  const [tonerMgCara, setTonerMgCara] = useState<string>(() => {
+    if (insumo?.categoria === "toner" && insumo.toner_mg_por_cara != null) {
+      return String(insumo.toner_mg_por_cara);
+    }
+    return "60";
+  });
+  /** `__custom__` = valores manuales; UUID = fila de `toner_modelos` (o referencia guardada). */
+  const [tonerModeloKey, setTonerModeloKey] = useState<string>(() => {
+    if (insumo?.categoria === "toner" && insumo.toner_modelo_id) {
+      return insumo.toner_modelo_id;
+    }
+    return "__custom__";
+  });
+  const [tonerModelosList, setTonerModelosList] = useState<TonerModeloReferencia[]>(
+    []
+  );
+  const [tonerModelosLoading, setTonerModelosLoading] = useState(false);
   const [rendimiento, setRendimiento] = useState<string>(() => {
     const cat = insumo?.categoria ?? "espiral";
     if (cat === "papel") {
@@ -204,8 +230,11 @@ export function InsumoForm({
     }
     prevCategoriaRef.current = categoria;
     if (categoria === "toner") {
-      setRendimiento(String(RENDIMIENTO_MAESTRO_TONER));
-      setEquivVenta(String(RENDIMIENTO_MAESTRO_TONER));
+      if (!isEdit) {
+        setTonerGramos("60");
+        setTonerMgCara("60");
+        setTonerModeloKey("__custom__");
+      }
     } else if (categoria === "tinta") {
       setRendimiento(String(RENDIMIENTO_MAESTRO_TINTA));
       setEquivVenta(String(RENDIMIENTO_MAESTRO_TINTA));
@@ -214,8 +243,9 @@ export function InsumoForm({
       setEquivVenta(String(RENDIMIENTO_MAESTRO_ESPIRAL));
     } else if (!isEdit) {
       setEquivVenta((v) =>
-        v === "500" ||
+          v === "500" ||
           v === "1800" ||
+          v === "1000" ||
           v === "30000" ||
           v === "30" ||
           v === "25" ||
@@ -225,6 +255,27 @@ export function InsumoForm({
       );
     }
   }, [categoria, isEdit]);
+
+  useEffect(() => {
+    if (categoria !== "toner") return;
+    let cancelled = false;
+    void (async () => {
+      setTonerModelosLoading(true);
+      try {
+        const rows = await fetchTonerModelosActivos();
+        if (!cancelled) {
+          setTonerModelosList(rows.length > 0 ? rows : TONER_MODELOS_FALLBACK);
+        }
+      } catch {
+        if (!cancelled) setTonerModelosList(TONER_MODELOS_FALLBACK);
+      } finally {
+        if (!cancelled) setTonerModelosLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [categoria]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -254,7 +305,23 @@ export function InsumoForm({
     } else if (categoria === "tinta") {
       rendimientoOut = RENDIMIENTO_MAESTRO_TINTA;
     } else if (categoria === "toner") {
-      rendimientoOut = RENDIMIENTO_MAESTRO_TONER;
+      const g = parseFloat(tonerGramos.replace(",", ".")) || 0;
+      const mg = parseFloat(tonerMgCara.replace(",", ".")) || 0;
+      if (!Number.isFinite(g) || g < 0.1 || g > 50_000) {
+        showToast(
+          "GRAMOS DE TÓNER POR CARTUCHO: INDICÁ UN VALOR ENTRE 0,1 Y 50000",
+          "error"
+        );
+        return;
+      }
+      if (!Number.isFinite(mg) || mg < 0.1 || mg > 500_000) {
+        showToast(
+          "MG POR CARA IMPRESA: INDICÁ UN VALOR ENTRE 0,1 Y 500000",
+          "error"
+        );
+        return;
+      }
+      rendimientoOut = tonerPaginasPorCartuchoDesdeFisica(g, mg);
     } else if (categoria === "espiral") {
       rendimientoOut = RENDIMIENTO_MAESTRO_ESPIRAL;
     } else {
@@ -297,10 +364,13 @@ export function InsumoForm({
       stAct *= rendimientoOut;
       stMin *= rendimientoOut;
     } else if (categoria === "toner") {
-      stAct *= RENDIMIENTO_MAESTRO_TONER;
-      stMin *= RENDIMIENTO_MAESTRO_TONER;
+      stAct *= rendimientoOut;
+      stMin *= rendimientoOut;
+    } else if (categoria === "tinta") {
+      stAct *= ML_POR_LITRO_TINTA;
+      stMin *= ML_POR_LITRO_TINTA;
     }
-    /** Tinta: stock en ml en BD (sin × rendimiento). */
+    /** Tinta: pantalla en litros; BD en ml (×1000). */
 
     const unidadOut: InsumoUnidad = CATEGORIAS_COMPRA_SIMPLE.includes(categoria)
       ? (DEFAULT_UNIDAD[categoria] as InsumoUnidad)
@@ -340,7 +410,19 @@ export function InsumoForm({
         stock_actual: stAct,
         stock_minimo: stMin,
         activo: true,
-        updated_by: null
+        updated_by: null,
+        ...(categoria === "toner"
+          ? {
+              toner_gramos_por_cartucho:
+                parseFloat(tonerGramos.replace(",", ".")) || 0,
+              toner_mg_por_cara: parseFloat(tonerMgCara.replace(",", ".")) || 0,
+              toner_modelo_id:
+                tonerModeloKey !== "__custom__" &&
+                esTonerModeloIdPersistible(tonerModeloKey)
+                  ? tonerModeloKey
+                  : null
+            }
+          : {})
       });
     } catch (e) {
       if (e instanceof InsumoValidacionError) {
@@ -362,6 +444,14 @@ export function InsumoForm({
   const compraSimple = CATEGORIAS_COMPRA_SIMPLE.includes(categoria);
   const showContenidoGenerico =
     !["papel", "tinta", "toner", "espiral"].includes(categoria);
+
+  const paginasTonerDerividas = useMemo(() => {
+    if (categoria !== "toner") return null;
+    const g = parseFloat(tonerGramos.replace(",", ".")) || 0;
+    const mg = parseFloat(tonerMgCara.replace(",", ".")) || 0;
+    if (g <= 0 || mg <= 0) return null;
+    return tonerPaginasPorCartuchoDesdeFisica(g, mg);
+  }, [categoria, tonerGramos, tonerMgCara]);
 
   const rendimientoDistintoAlMaestro =
     isEdit &&
@@ -392,18 +482,25 @@ export function InsumoForm({
       return { unidades: u, cu, detalle: "hojas" as const };
     }
     if (categoria === "toner") {
-      const r = RENDIMIENTO_MAESTRO_TONER;
+      const r = paginasTonerDerividas ?? RENDIMIENTO_MAESTRO_TONER;
       const u = cant * r;
       const cu = precio / r;
       return { unidades: u, cu, detalle: "carillas" as const };
     }
     if (categoria === "tinta") {
-      const ml = cant;
+      const ml = cant * ML_POR_LITRO_TINTA;
       const cu = precio / ML_POR_LITRO_TINTA;
       return { unidades: ml, cu, detalle: "ml" as const };
     }
     return null;
-  }, [compraSimple, categoria, precioCompra, stockActual, hojasPapelPreview]);
+  }, [
+    compraSimple,
+    categoria,
+    precioCompra,
+    stockActual,
+    hojasPapelPreview,
+    paginasTonerDerividas
+  ]);
 
   return (
     <>
@@ -520,10 +617,12 @@ export function InsumoForm({
         )}
       </div>
 
-      {compraSimple && categoria !== "tinta" && categoria !== "papel" && (
+      {compraSimple &&
+        categoria !== "tinta" &&
+        categoria !== "papel" &&
+        categoria !== "toner" && (
         <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          Cargá bultos y precio de esa compra. El sistema convierte a carillas
-          (tóner) según el maestro.
+          Cargá bultos y precio de esa compra.
         </p>
       )}
       {compraSimple && categoria === "papel" && (
@@ -534,17 +633,15 @@ export function InsumoForm({
       )}
       {compraSimple && categoria === "tinta" && (
         <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          <strong>Tinta:</strong> stock en <strong>ml</strong> en depósito;{" "}
-          <strong>precio por litro</strong> de compra ($15.000 = un litro). El valor
-          del inventario = (ml ÷ 1000) × precio litro. El maestro{" "}
-          <strong>
-            {RENDIMIENTO_MAESTRO_TINTA} páginas por ml
-          </strong>{" "}
-          (conservador) aplica al costo de impresión y al descuento de stock por
-          pedido; no cambia el valor de inventario en ml.
+          <strong>Tinta:</strong> cargá los <strong>litros</strong> que tenés en
+          depósito (ej. <strong>5</strong> = cinco litros). La base guarda{" "}
+          <strong>mililitros</strong> para descontar bien por pedido.{" "}
+          <strong>Precio por litro</strong> de compra. El maestro{" "}
+          <strong>{RENDIMIENTO_MAESTRO_TINTA} páginas por ml</strong> define cuántos ml
+          gasta cada cara impresa en costos; no cambia cuántos litros declarás en
+          stock.
         </p>
       )}
-
       {categoria === "papel" && (
         <div className="rounded-sm border border-amber-300 bg-amber-50/50 px-3 py-3 space-y-2">
           <label className="text-[10px] font-black text-amber-900 ml-0.5 uppercase">
@@ -571,6 +668,109 @@ export function InsumoForm({
         </div>
       )}
 
+      {categoria === "toner" && (
+        <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
+            Física del tóner (el sistema calcula todo lo demás)
+          </p>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+              Perfil de referencia
+            </label>
+            <select
+              value={tonerModeloKey}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__custom__") {
+                  setTonerModeloKey("__custom__");
+                  return;
+                }
+                const m = tonerModelosList.find((x) => x.id === v);
+                if (m) {
+                  setTonerModeloKey(v);
+                  setTonerGramos(String(m.gramos_por_cartucho));
+                  setTonerMgCara(String(m.mg_por_cara));
+                }
+              }}
+              disabled={tonerModelosLoading && tonerModelosList.length === 0}
+              className="w-full max-w-xl p-3 bg-white rounded-sm font-bold text-slate-900 border border-slate-200 outline-none text-sm"
+            >
+              <option value="__custom__">
+                Personalizado (editar gramos y mg abajo)
+              </option>
+              {esTonerModeloIdPersistible(tonerModeloKey) &&
+                !tonerModelosList.some((m) => m.id === tonerModeloKey) && (
+                  <option value={tonerModeloKey}>
+                    Referencia guardada (no aparece en el catálogo cargado)
+                  </option>
+                )}
+              {tonerModelosList.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre} — {m.gramos_por_cartucho} g · {m.mg_por_cara} mg/cara
+                </option>
+              ))}
+            </select>
+            <p className="text-[9px] text-slate-500 font-semibold leading-snug">
+              Elegí un perfil del catálogo para rellenar gramos y mg; después podés
+              afinar a mano (pasa a personalizado). El stock abajo sigue siendo en{" "}
+              <strong>cartuchos</strong>.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Gramos de tóner por cartucho <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min={0.1}
+                max={50000}
+                value={tonerGramos}
+                onChange={(e) => {
+                  setTonerGramos(e.target.value);
+                  setTonerModeloKey("__custom__");
+                }}
+                className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
+              />
+              <p className="text-[9px] text-slate-500 font-semibold">
+                Típico laser oficina ~<strong>60 g</strong> por cartucho.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                mg por cara impresa (A4) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min={0.1}
+                max={500000}
+                value={tonerMgCara}
+                onChange={(e) => {
+                  setTonerMgCara(e.target.value);
+                  setTonerModeloKey("__custom__");
+                }}
+                className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
+              />
+              <p className="text-[9px] text-slate-500 font-semibold">
+                Referencia texto / ~5% cobertura: suele andar entre{" "}
+                <strong>40–120 mg</strong> por cara.
+              </p>
+            </div>
+          </div>
+          {paginasTonerDerividas != null && (
+            <p className="text-[11px] text-slate-800 font-semibold leading-snug rounded-sm bg-white border border-slate-100 px-3 py-2">
+              <strong>≈ {paginasTonerDerividas} páginas</strong> por cartucho
+              (derivado: {tonerGramos} g × 1000 ÷ {tonerMgCara} mg/cara). El costo por
+              cara ≈ precio del cartucho ÷ {paginasTonerDerividas}. Abajo cargá{" "}
+              <strong>cuántos cartuchos</strong> tenés: el stock pasa a “páginas
+              equivalentes” para descontar <strong>por cada cara</strong> del PDF.
+            </p>
+          )}
+        </div>
+      )}
+
       {CATEGORIAS_RENDIMIENTO_MAESTRO.includes(categoria) && (
         <div className="space-y-2">
           {rendimientoDistintoAlMaestro && insumo && (
@@ -587,14 +787,6 @@ export function InsumoForm({
               Rendimiento (maestro — no editable)
             </p>
             <p className="text-sm font-black text-slate-900">
-              {categoria === "toner" && (
-                <>
-                  {RENDIMIENTO_MAESTRO_TONER}{" "}
-                  <span className="text-slate-600 font-bold text-xs">
-                    páginas por cartucho
-                  </span>
-                </>
-              )}
               {categoria === "tinta" && (
                 <>
                   {RENDIMIENTO_MAESTRO_TINTA}{" "}
@@ -715,8 +907,8 @@ export function InsumoForm({
             className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
           />
           <p className="text-[9px] text-slate-400 font-semibold leading-snug">
-            Costo real = costo compra ÷ rendimiento del lote. Papel, tóner, tinta y
-            espiral usan maestros fijos en otra sección.
+            Costo real = costo compra ÷ rendimiento del lote. Papel, tinta y espiral
+            usan reglas fijas arriba; el tóner usa la física (perfil o manual).
           </p>
         </div>
       )}

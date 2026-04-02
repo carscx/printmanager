@@ -14,6 +14,7 @@ import type { ReglaCosto } from "../../types/reglaCosto";
 import { formatCurrency } from "../../utils/formatters";
 import {
   costoUnitarioInsumo,
+  estimacionStockPorCaraReglaImpresion,
   REGLAS_COSTO_FACTOR_SEGURIDAD
 } from "../../services/bomCosto";
 import { margenSobreVenta } from "../../services/costEngine";
@@ -59,19 +60,41 @@ const PREF_ANILLADO: InsumoCategoria[] = [
   "otro"
 ];
 
-/** Impresión: cantidad_usada en unidades de consumo (hoja, página de tóner, ml); sin exponer fracciones de cartucho en la UI. */
+/** Coeficiente por línea: papel por hoja física; tóner/tinta por cara impresa. */
 function etiquetaCantidadReglaImpresion(
   cat: InsumoCategoria | undefined
 ): string {
   switch (cat) {
     case "papel":
-      return "Hojas";
+      return "Coef. (hoja física)";
     case "toner":
-      return "Páginas (tóner)";
+      return "Coef. (cara impresa)";
     case "tinta":
-      return "Mililitros (ml)";
+      return "Coef. (cara impresa)";
     default:
       return "Cantidad";
+  }
+}
+
+function textoEstimacionDescuentoStock(
+  ins: Insumo | undefined,
+  cantidadUsada: number
+): string | null {
+  if (!ins) return null;
+  const est = estimacionStockPorCaraReglaImpresion(ins, cantidadUsada);
+  if (!est) return null;
+  const v = est.valor;
+  const n =
+    Math.abs(v - Math.round(v)) < 1e-6 ? String(Math.round(v)) : v.toFixed(4);
+  switch (est.unidad) {
+    case "hojas":
+      return `Descuento stock: ${n} hoja(s) de este papel por cada hoja física del ítem.`;
+    case "carillas":
+      return `Descuento stock: ${n} carilla(s) por cada cara impresa (coef. × carillas del PDF).`;
+    case "ml":
+      return `Descuento stock: ≈ ${v.toFixed(4)} ml por cada cara impresa.`;
+    default:
+      return null;
   }
 }
 
@@ -245,6 +268,58 @@ export function ReglasNegocioPanel({
     }
   };
 
+  /** Papel + tóner + tinta (primeros del catálogo no usados aún), coef. 1 = una cara “estándar”. */
+  const addKitUnaCara = async () => {
+    if (!selId || tipoServicio !== "impresion") return;
+    setSaving(true);
+    try {
+      const usados = new Set(
+        reglas.map((x) => x.insumo_id).filter(Boolean) as string[]
+      );
+      const papel = insumosOrdenados.find(
+        (i) => i.categoria === "papel" && !usados.has(i.id)
+      );
+      const toner = insumosOrdenados.find(
+        (i) => i.categoria === "toner" && !usados.has(i.id)
+      );
+      const tinta = insumosOrdenados.find(
+        (i) => i.categoria === "tinta" && !usados.has(i.id)
+      );
+      const filas: { ins: Insumo; nombre: string }[] = [];
+      if (papel) filas.push({ ins: papel, nombre: papel.nombre });
+      if (toner) filas.push({ ins: toner, nombre: toner.nombre });
+      if (tinta) filas.push({ ins: tinta, nombre: tinta.nombre });
+      if (filas.length === 0) {
+        showToast(
+          "YA HAY PAPEL/TÓNER/TINTA EN LA TARIFA O NO EXISTEN EN EL CATÁLOGO",
+          "error"
+        );
+        return;
+      }
+      for (const { ins } of filas) {
+        const row = await reglasCostoApi.insert({
+          precio_impresion_id: selId,
+          precio_anillado_id: null,
+          insumo_id: ins.id,
+          cantidad_usada: 1,
+          activo: true
+        });
+        setReglas((prev) => [...prev, row]);
+        usados.add(ins.id);
+      }
+      onChanged?.();
+      showToast(
+        `KIT 1 CARA: ${filas.map((f) => f.nombre).join(" · ")}`,
+        "success"
+      );
+    } catch {
+      showToast("NO SE PUDO AGREGAR EL KIT", "error");
+      await reload();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateRegla = async (
     id: string,
     patch: Partial<Pick<ReglaCosto, "insumo_id" | "cantidad_usada" | "activo">>
@@ -350,26 +425,58 @@ export function ReglasNegocioPanel({
       {selId && (precioImpSel || precioAnSel) && (
         <div className="rounded-sm border border-violet-100 bg-violet-50/40 p-4 space-y-4">
           {tipoServicio === "impresion" && (
-            <p className="text-[11px] text-violet-900 font-semibold leading-relaxed bg-white/80 rounded-sm border border-violet-100 px-3 py-2">
-              <strong>Impresión:</strong> las cantidades son por unidad de
-              servicio (ej. B&amp;N típico: <strong>1 hoja</strong> de papel y{" "}
-              <strong>1 página</strong> de tóner). El motor aplica el precio de
-              compra y el rendimiento por bulto; no se muestran fracciones de
-              cartucho.
-            </p>
+            <div className="text-[11px] text-violet-900 font-semibold leading-relaxed bg-white/80 rounded-sm border border-violet-100 px-3 py-2 space-y-2">
+              <p>
+                <strong>Cómo se descuenta el stock en pedidos:</strong> el
+                programa multiplica tu coeficiente por las{" "}
+                <strong>caras impresas</strong> del PDF (tóner y tinta) y por
+                las <strong>hojas físicas</strong> (papel). Con coef.{" "}
+                <strong>1</strong> en tóner/tinta = una cara “típica”; podés usar{" "}
+                <strong>0,5</strong>, <strong>1,2</strong>, etc. para cubrir
+                menos o más cobertura.
+              </p>
+              <p className="text-violet-800 font-bold">
+                Papel: coef. por <strong>hoja física</strong>. Tóner / tinta:
+                coef. por <strong>cara impresa</strong>. En B/N quitá la línea de
+                tinta color; en color podés combinar varias tintas.
+              </p>
+              {precioImpSel?.doble_faz && (
+                <p className="text-amber-900 font-semibold bg-amber-50 border border-amber-200 rounded-sm px-2 py-1.5">
+                  <strong>Tarifa doble faz:</strong> con coef. <strong>1</strong>{" "}
+                  en tóner/tinta ya se descuenta <strong>una carilla por cada
+                  cara del PDF</strong> (una hoja impresa por los dos lados = 2
+                  carillas). <strong>No hace falta poner 2</strong> salvo que
+                  quieras el <strong>doble de consumo</strong> por cara (p. ej.
+                  mucha tinta).
+                </p>
+              )}
+            </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[10px] font-black text-violet-800 uppercase tracking-widest">
               Componentes de costo
             </p>
-            <button
-              type="button"
-              disabled={saving || insumosOrdenados.length === 0}
-              onClick={() => void addLinea()}
-              className="px-4 py-2 rounded-sm bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
-            >
-              + Añadir insumo
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {tipoServicio === "impresion" && (
+                <button
+                  type="button"
+                  disabled={saving || insumosOrdenados.length === 0}
+                  onClick={() => void addKitUnaCara()}
+                  className="px-4 py-2 rounded-sm bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+                  title="Añade papel + tóner + tinta (si hay en catálogo y no están ya) con coef. 1"
+                >
+                  + Kit 1 cara (papel+tóner+tinta)
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={saving || insumosOrdenados.length === 0}
+                onClick={() => void addLinea()}
+                className="px-4 py-2 rounded-sm bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+              >
+                + Añadir insumo
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -467,6 +574,25 @@ export function ReglasNegocioPanel({
                         }
                         className="w-full mt-1 p-2 rounded-sm border border-slate-100 font-black text-xs"
                       />
+                      {tipoServicio === "impresion" &&
+                        ins?.categoria === "papel" && (
+                          <p className="text-[8px] text-slate-500 font-semibold leading-tight mt-0.5 max-w-[11rem]">
+                            Por cada <strong>hoja física</strong> del ítem; lo
+                            usual es <strong>1</strong>. No cargues hojas de la
+                            resma (ej. 500).
+                          </p>
+                        )}
+                      {tipoServicio === "impresion" &&
+                        ins &&
+                        (ins.categoria === "toner" ||
+                          ins.categoria === "tinta") && (
+                          <p className="text-[8px] text-emerald-800 font-bold leading-tight mt-0.5 max-w-[14rem]">
+                            {textoEstimacionDescuentoStock(
+                              ins,
+                              r.cantidad_usada
+                            )}
+                          </p>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 pb-1">
                       <span className="text-[9px] font-black text-slate-400 uppercase">
@@ -525,6 +651,14 @@ export function ReglasNegocioPanel({
                   Costo directo tarifa (reglas):{" "}
                   {formatCurrency(totalConSeguridad)}
                 </p>
+                {tipoServicio === "impresion" && (
+                  <p className="text-[9px] text-slate-500 font-semibold leading-snug">
+                    Subtotal: una “unidad” de cada coef. a precio 1/1/1. En
+                    pedidos reales, el descuento de stock suma{" "}
+                    <strong>caras</strong> (tóner/tinta) y <strong>hojas físicas</strong>{" "}
+                    (papel); en doble faz hay más caras que hojas.
+                  </p>
+                )}
                 {margenVentaVsReglas && (
                   <p className="text-[11px] font-bold text-slate-700 pt-1">
                     Margen sobre precio de venta (vs{" "}

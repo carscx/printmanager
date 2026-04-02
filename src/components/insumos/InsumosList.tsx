@@ -5,7 +5,7 @@ import { formatCurrency } from "../../utils/formatters";
 import { costoUnitarioInsumo } from "../../services/bomCosto";
 import { generarReporteStockPdf } from "../../services/generarReporteStockPdf";
 import {
-  stockHumanoTexto,
+  stockFisicoTexto,
   valorInventarioUltimoPrecioBulto
 } from "../../utils/insumoStockHuman";
 import { showToast } from "../ui/Toast";
@@ -61,7 +61,7 @@ function StockBadge({ insumo }: { insumo: Insumo }) {
       className={`inline-flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-black ${bg}`}
     >
       <i className={`fas ${icon} text-[10px]`} />
-      {stockHumanoTexto(insumo)}
+      {stockFisicoTexto(insumo)}
     </span>
   );
 }
@@ -351,10 +351,10 @@ export function InsumosList({
                         <ImpactoMargenLine row={imp} />
                       </td>
                       <td className="py-2.5 px-2 text-right font-bold text-slate-700 whitespace-nowrap">
-                        {stockHumanoTexto(insumo)}
+                        {stockFisicoTexto(insumo)}
                       </td>
                       <td className="py-2.5 px-2 text-right text-amber-700 font-bold whitespace-nowrap">
-                        {stockHumanoTexto({
+                        {stockFisicoTexto({
                           ...insumo,
                           stock_actual: insumo.stock_minimo
                         })}

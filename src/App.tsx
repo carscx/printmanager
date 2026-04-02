@@ -21,6 +21,7 @@ import { WhatsappPreviewPage } from "./pages/WhatsappPreviewPage";
 import { PlantillasWhatsappPage } from "./pages/PlantillasWhatsappPage";
 import { FacturacionPage } from "./pages/FacturacionPage";
 import { GastosFijosPage } from "./pages/GastosFijosPage";
+import { TonerModelosPage } from "./pages/TonerModelosPage";
 import { useAuth } from "./hooks/AuthContext";
 import { OfflineBanner } from "./components/ui/OfflineBanner";
 import ReloadPrompt from "./components/ReloadPrompt";
@@ -184,6 +185,16 @@ function AuthenticatedShell({
                   <ProtectedRoute user={user}>
                     <AdminRoute>
                       <GastosFijosPage />
+                    </AdminRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/toner-modelos"
+                element={
+                  <ProtectedRoute user={user}>
+                    <AdminRoute>
+                      <TonerModelosPage />
                     </AdminRoute>
                   </ProtectedRoute>
                 }

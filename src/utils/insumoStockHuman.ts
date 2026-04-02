@@ -15,7 +15,7 @@ function fmtCant(n: number): string {
 
 /**
  * “Bultos” para valorar: resmas/cartuchos; tinta = litros (stock ml ÷ 1000).
- * Tinta: rendimiento = páginas/ml (maestro conservador en bomCosto); costeo/stock pedidos.
+ * Tinta: rendimiento = páginas/ml (maestro en bomCosto, ~30); costeo/stock pedidos.
  */
 export function bultosEnStock(ins: Insumo): number {
   const s = Number(ins.stock_actual) || 0;
@@ -54,16 +54,27 @@ export function valorInventarioUltimoPrecioBulto(ins: Insumo): number {
   return bultosEnStock(ins) * ultimoPrecioCompraBulto(ins);
 }
 
-/** Stock en BD: hojas, carillas (tóner), ml (tinta), u. */
+/** Stock en BD: hojas, carillas (tóner), ml (tinta). Lista: unidad de compra primero. */
 export function stockFisicoTexto(ins: Insumo): string {
   const s = Number(ins.stock_actual) || 0;
   switch (ins.categoria) {
     case "papel":
       return `${fmtCant(s)} hojas`;
-    case "toner":
-      return `${fmtCant(s)} carillas`;
-    case "tinta":
-      return `${fmtCant(s)} ml`;
+    case "toner": {
+      const r = rendimientoEfectivoInsumo(ins);
+      if (r <= 0) return `${fmtCant(s)} u.`;
+      const cartuchos = s / r;
+      const mg = ins.toner_mg_por_cara;
+      const mgTxt =
+        mg != null && Number(mg) > 0
+          ? ` · ~${fmtCant(Number(mg))} mg/cara`
+          : "";
+      return `${fmtCant(cartuchos)} cartuchos (${fmtCant(s)} pág. equiv.)${mgTxt}`;
+    }
+    case "tinta": {
+      const L = s / ML_POR_LITRO_TINTA;
+      return `${fmtCant(L)} L (${fmtCant(s)} ml)`;
+    }
     default:
       return `${fmtCant(s)} u.`;
   }
@@ -97,7 +108,7 @@ export function etiquetaStockCategoria(categoria: InsumoCategoria): string {
     case "toner":
       return "Cartuchos";
     case "tinta":
-      return "Mililitros (ml)";
+      return "Litros en depósito";
     default:
       return "Stock actual";
   }
@@ -110,7 +121,7 @@ export function etiquetaMinimoCategoria(categoria: InsumoCategoria): string {
     case "toner":
       return "Mín. cartuchos";
     case "tinta":
-      return "Mínimo (ml)";
+      return "Mínimo (litros)";
     default:
       return "Stock mínimo";
   }

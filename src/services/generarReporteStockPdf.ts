@@ -4,7 +4,6 @@ import type { Insumo } from "../types/insumo";
 import { INSUMO_CATEGORIA_LABELS } from "../types/insumo";
 import {
   stockFisicoTexto,
-  stockHumanoTexto,
   ultimoPrecioCompraBulto,
   valorInventarioUltimoPrecioBulto
 } from "../utils/insumoStockHuman";
@@ -79,7 +78,7 @@ export interface OpcionesReporteStockPdf {
 }
 
 /**
- * PDF: stock en BD; papel/tóner en bultos vía rendimiento; tinta en litros (ml÷1000) × $/litro.
+ * PDF: stock en unidad física (hojas / carillas / ml) y valor con último precio por bulto/litro.
  */
 export async function generarReporteStockPdf(
   opts: OpcionesReporteStockPdf
@@ -135,7 +134,6 @@ export async function generarReporteStockPdf(
       ins.nombre,
       INSUMO_CATEGORIA_LABELS[ins.categoria],
       stockFisicoTexto(ins),
-      stockHumanoTexto(ins),
       pBulto > 0 ? formatNumAr(pBulto, { prefix: "$" }) : "—",
       formatNumAr(valor, { prefix: "$" })
     ]);
@@ -144,7 +142,6 @@ export async function generarReporteStockPdf(
   if (body.length === 0) {
     body.push([
       "Sin insumos con los filtros actuales",
-      "—",
       "—",
       "—",
       "—",
@@ -158,8 +155,7 @@ export async function generarReporteStockPdf(
       [
         "Nombre del insumo",
         "Categoría",
-        "Stock físico (BD)",
-        "Stock (bultos / L)",
+        "Stock",
         "Últ. precio compra",
         "Valor total"
       ]
@@ -181,12 +177,11 @@ export async function generarReporteStockPdf(
     },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
-      0: { cellWidth: 38 },
-      1: { cellWidth: 24 },
-      2: { halign: "right", cellWidth: 28 },
-      3: { halign: "right", cellWidth: 28 },
-      4: { halign: "right", cellWidth: 26 },
-      5: { halign: "right", cellWidth: 28 }
+      0: { cellWidth: 42 },
+      1: { cellWidth: 26 },
+      2: { halign: "right", cellWidth: 32 },
+      3: { halign: "right", cellWidth: 30 },
+      4: { halign: "right", cellWidth: 30 }
     },
     margin: { left: margin, right: margin },
     tableLineColor: [226, 232, 240],

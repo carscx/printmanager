@@ -38,7 +38,12 @@ export function buildNavItems(isAdmin: boolean, role: UserRole): NavItem[] {
       { path: "/pedidos", icon: "fa-clipboard-list", label: "Pedidos" },
       ...tail,
       facturacion,
-      { path: "/admin/gastos", icon: "fa-receipt", label: "Gastos fijos" }
+      { path: "/admin/gastos", icon: "fa-receipt", label: "Gastos fijos" },
+      {
+        path: "/admin/toner-modelos",
+        icon: "fa-circle-nodes",
+        label: "Perfiles tóner"
+      }
     ];
   }
   /** Vendedor: misma sección que admin (no es el listado de pedidos). Operador no la ve. */
@@ -62,5 +67,6 @@ export function isNavItemActive(path: string, pathname: string): boolean {
   if (path === "/") return pathname === "/";
   if (path === "/facturacion") return pathname === "/facturacion";
   if (path === "/admin/gastos") return pathname === "/admin/gastos";
+  if (path === "/admin/toner-modelos") return pathname === "/admin/toner-modelos";
   return pathname.startsWith(path);
 }

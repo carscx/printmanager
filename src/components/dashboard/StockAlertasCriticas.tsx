@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Insumo } from "../../types/insumo";
-import { stockHumanoTexto } from "../../utils/insumoStockHuman";
+import { stockFisicoTexto } from "../../utils/insumoStockHuman";
 
 interface Props {
   /**
@@ -141,7 +141,7 @@ export function StockAlertasCriticas({
                 </span>
               </span>
               <span className="shrink-0 font-black tabular-nums">
-                {stockHumanoTexto(i)}
+                {stockFisicoTexto(i)}
               </span>
             </li>
           );

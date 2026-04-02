@@ -16,7 +16,7 @@ import { formatCurrency } from "../utils/formatters";
 import { toDateStringAR } from "../utils/dateAr";
 import { showToast } from "../components/ui/Toast";
 import { EvolucionRentabilidadChart } from "../components/reportes/EvolucionRentabilidadChart";
-import { stockHumanoTexto } from "../utils/insumoStockHuman";
+import { stockFisicoTexto } from "../utils/insumoStockHuman";
 import type { Pedido, PedidoItem } from "../types/pedido";
 import {
   fetchGastosFijosActivos,
@@ -549,8 +549,8 @@ const ReportesPage = () => {
                     <ul className="text-xs text-amber-900 font-semibold space-y-1">
                       {stockBajo.slice(0, 5).map((i) => (
                         <li key={i.id}>
-                          {i.nombre}: {stockHumanoTexto(i)} (mín.{" "}
-                          {stockHumanoTexto({
+                          {i.nombre}: {stockFisicoTexto(i)} (mín.{" "}
+                          {stockFisicoTexto({
                             ...i,
                             stock_actual: i.stock_minimo
                           })}
