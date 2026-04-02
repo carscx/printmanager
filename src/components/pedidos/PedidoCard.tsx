@@ -2,7 +2,11 @@ import { useState, type MouseEvent } from "react";
 import type { Pedido, EstadoPedido } from "../../types/pedido";
 import { PedidoEstadoSwitcher } from "./PedidoEstadoSwitcher";
 import { Badge } from "../ui/Badge";
-import { formatCurrency, formatDateFromInput } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateFromInput
+} from "../../utils/formatters";
 import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
 import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 import { copyTextToClipboard } from "../../utils/clipboard";
@@ -59,7 +63,8 @@ export function PedidoCard({
   const currentBorder = borderConfig[estadoRaw] ?? "border-l-slate-300";
 
   const items = p.pedido_items || [];
-  const fDate = p.fecha_entrega ? formatDateFromInput(p.fecha_entrega) : "⏳";
+  const fDateEntrega = p.fecha_entrega ? formatDateFromInput(p.fecha_entrega) : "⏳";
+  const fDateCreado = p.created_at ? formatDate(p.created_at) : "—";
   const totalP = totalVentaPedido(p);
   const senaP = Number(p.sena ?? 0);
   const pagoTotal = totalP > 0 && senaP >= totalP;
@@ -162,9 +167,9 @@ export function PedidoCard({
     <div
       className={`bg-white rounded-sm shadow-sm border border-gray-100 border-l-[10px] ${currentBorder} p-5 mb-4 transition-all hover:shadow-md animate-slide-in-right min-w-0 overflow-hidden`}
     >
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-black text-slate-900 text-xl md:text-2xl uppercase leading-none tracking-tighter truncate">
+      <div className="flex flex-col gap-3 min-w-0">
+        <div className="w-full min-w-0">
+          <h3 className="font-black text-slate-900 text-xl md:text-2xl uppercase tracking-tighter w-full min-w-0 break-words [overflow-wrap:anywhere] leading-tight max-sm:whitespace-normal sm:truncate sm:whitespace-nowrap sm:leading-none">
             {p.cliente}
           </h3>
           {p.numero_publico != null && (
@@ -172,7 +177,10 @@ export function PedidoCard({
               Pedido #{p.numero_publico}
             </p>
           )}
-          <div className="flex flex-wrap gap-2 mt-2">
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start sm:gap-3">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <Badge
               text={etiquetaEstado[estadoRaw]}
               className="bg-slate-100 text-slate-600 font-bold text-[10px]"
@@ -192,13 +200,20 @@ export function PedidoCard({
               />
             )}
             <Badge
-              text={fDate}
-              className="bg-blue-50 text-blue-600 font-bold text-[10px]"
+              text={`Creado ${fDateCreado}`}
+              className="bg-violet-50 text-violet-800 font-bold text-[10px] ring-1 ring-violet-100"
+            />
+            <Badge
+              text={
+                fDateEntrega === "⏳"
+                  ? "Entrega sin fecha"
+                  : `Entrega ${fDateEntrega}`
+              }
+              className="bg-sky-50 text-sky-800 font-bold text-[10px] ring-1 ring-sky-100"
             />
           </div>
-        </div>
 
-        <div className="flex gap-1.5 shrink-0 p-1 rounded-sm bg-slate-100/80 border border-slate-200">
+          <div className="flex gap-1.5 shrink-0 p-1 rounded-sm bg-slate-100/80 border border-slate-200 self-end sm:self-start">
           <button
             onClick={handleCopiarNumero}
             className="p-2.5 rounded-sm border-2 border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800 active:scale-95 transition-all touch-manipulation"
@@ -245,6 +260,7 @@ export function PedidoCard({
           >
             <i className="fas fa-trash-alt text-lg" />
           </button>
+        </div>
         </div>
       </div>
 

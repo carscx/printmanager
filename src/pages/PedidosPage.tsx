@@ -509,7 +509,7 @@ export function PedidosPage() {
                   aplicarBusquedaClientePedido();
                 }
               }}
-              placeholder="Nombre o # de pedido…"
+              placeholder="Nombre (sin tildes) o # pedido…"
               className="w-full min-w-0 p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>
@@ -606,12 +606,12 @@ export function PedidosPage() {
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-                  Búsqueda (observaciones, archivo)
+                  Búsqueda (cliente, observaciones, archivo; sin tildes)
                 </label>
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ej: urgente, archivo.pdf…"
+                  placeholder="Ej: Vero, urgente, informe.pdf…"
                   className="w-full p-3 rounded-sm bg-white border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
@@ -716,12 +716,12 @@ export function PedidosPage() {
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-              Búsqueda (observaciones, archivo)
+              Búsqueda (cliente, observaciones, archivo; sin tildes)
             </label>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ej: urgente, archivo.pdf…"
+              placeholder="Ej: Vero, urgente, informe.pdf…"
               className="w-full p-3 rounded-sm bg-slate-50 border border-slate-100 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>

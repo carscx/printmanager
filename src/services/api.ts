@@ -1,4 +1,5 @@
 import { sb } from "../config/supabase";
+import { patronBusquedaPedidoParaSql } from "../utils/textoBusqueda";
 import type { Pedido, PedidoItem } from "../types/pedido";
 import type { PedidoItemInsumo } from "../types/precio";
 import type { AppConfig } from "../types/config";
@@ -18,10 +19,13 @@ export type HistorialFiltros = {
    */
   estado?: string | null;
   /**
-   * Búsqueda por nombre de cliente (ilike).
-   * Si el texto es solo dígitos (opcional #), también coincide por `numero_publico` exacto (OR).
+   * Búsqueda por cliente (`cliente_busqueda`, sin tildes; migración 58).
+   * Si el texto es solo dígitos (opcional #), también coincide por `numero_publico` (OR).
    */
   busquedaClientePedido?: string | null;
+  /**
+   * Texto libre: cliente, observaciones y nombre de archivo (columnas normalizadas; migración 58).
+   */
   searchQuery?: string | null;
   tipoTrabajo?: "bn" | "color" | "stickers" | "anillado" | null;
   cobranza?: "todos" | "impago" | "pagado" | null;
@@ -44,15 +48,17 @@ function applyEstadoHistorial(query: any, estado: string | null | undefined) {
 }
 
 function applyBusquedaClientePedido(query: any, raw: string | null | undefined) {
-  const q = (raw || "").trim();
-  if (!q) return query;
-  if (esSoloNumeroPedido(q)) {
-    const n = parseInt(q.replace(/^#/, "").trim(), 10);
+  const qRaw = (raw || "").trim();
+  if (!qRaw) return query;
+  const patron = patronBusquedaPedidoParaSql(qRaw);
+  if (!patron) return query;
+  if (esSoloNumeroPedido(qRaw)) {
+    const n = parseInt(qRaw.replace(/^#/, "").trim(), 10);
     if (Number.isFinite(n) && n > 0) {
-      return query.or(`cliente.ilike.%${q}%,numero_publico.eq.${n}`);
+      return query.or(`cliente_busqueda.ilike.%${patron}%,numero_publico.eq.${n}`);
     }
   }
-  return query.ilike("cliente", `%${q}%`);
+  return query.ilike("cliente_busqueda", `%${patron}%`);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,20 +234,20 @@ export const api = {
         ? "id,pedido_items!inner(id)"
         : "*,pedido_items(*)";
 
-    // Para búsqueda libre por nombre_archivo necesitamos mapear pedido_id desde pedido_items.
+    // Búsqueda libre: nombre_archivo normalizado (sin acentos) + cliente/observaciones.
     let pedidoIdsFromItems: string[] | null = null;
-    const q = (searchQuery || "").trim();
-    if (q) {
+    const qSearch = (searchQuery || "").trim();
+    const patronLibre = qSearch ? patronBusquedaPedidoParaSql(qSearch) : "";
+    const hasSearchLibre = Boolean(patronLibre);
+    if (hasSearchLibre) {
       const { data: itemsData, error: itemsErr } = await sb
         .from("pedido_items")
         .select("pedido_id")
-        .ilike("nombre_archivo", `%${q}%`);
+        .ilike("nombre_archivo_busqueda", `%${patronLibre}%`);
       if (itemsErr) throw itemsErr;
       pedidoIdsFromItems = Array.from(
         new Set((itemsData ?? []).map((r) => (r as any).pedido_id as string))
       );
-      // Si no hay matches en items, igual puede matchear por cliente/observaciones.
-      // Dejamos pedidoIdsFromItems = [] para que el OR no bloquee; se maneja abajo.
     }
 
     let query = sb.from("pedidos").select(selectHistorial, { count: "exact" });
@@ -260,18 +266,13 @@ export const api = {
     query = applyCobranza(query);
     query = applyImpresosHistorial(query, impresos);
 
-    // Búsqueda libre: cliente u observaciones, o nombre_archivo.
-    if (q) {
-      // OR en tabla pedidos
-      query = query.or(`cliente.ilike.%${q}%,observaciones.ilike.%${q}%`);
+    // Búsqueda libre: cliente u observaciones (columnas normalizadas), o nombre_archivo.
+    if (hasSearchLibre) {
+      query = query.or(
+        `cliente_busqueda.ilike.%${patronLibre}%,observaciones_busqueda.ilike.%${patronLibre}%`
+      );
 
-      // Si hay matches de items, limitamos también por esos IDs pero sin bloquear el OR de pedidos:
-      // - Si hay IDs, extendemos con OR: id in (...)
-      // - Si no hay IDs, no agregamos filtro por ids (queda solo cliente/observaciones).
       if (pedidoIdsFromItems && pedidoIdsFromItems.length > 0) {
-        // PostgREST 'or' no soporta 'in' en la misma cadena de forma simple,
-        // así que aplicamos un filtro adicional que amplía el set con un OR equivalente:
-        // id=in.(...) OR cliente/observaciones...
         const idsArchivoBn =
           pedidoIdsBn && pedidoIdsFromItems.length > 0
             ? pedidoIdsFromItems.filter((id) => pedidoIdsBn.includes(id))
@@ -284,9 +285,10 @@ export const api = {
           .from("pedidos")
           .select(selectHistorial, { count: "exact" })
           .in("id", idsParaIn)
-          .or(`cliente.ilike.%${q}%,observaciones.ilike.%${q}%`);
+          .or(
+            `cliente_busqueda.ilike.%${patronLibre}%,observaciones_busqueda.ilike.%${patronLibre}%`
+          );
 
-        // Reaplicar filtros previos sobre esta query reconstruida
         if (fromDate) query = query.gte("created_at", fromDate);
         if (toDate) query = query.lte("created_at", toDate);
         query = applyEstadoHistorial(query, estado);
