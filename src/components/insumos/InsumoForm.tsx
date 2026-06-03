@@ -243,7 +243,7 @@ export function InsumoForm({
       setEquivVenta(String(RENDIMIENTO_MAESTRO_ESPIRAL));
     } else if (!isEdit) {
       setEquivVenta((v) =>
-          v === "500" ||
+        v === "500" ||
           v === "1800" ||
           v === "1000" ||
           v === "30000" ||
@@ -413,15 +413,15 @@ export function InsumoForm({
         updated_by: null,
         ...(categoria === "toner"
           ? {
-              toner_gramos_por_cartucho:
-                parseFloat(tonerGramos.replace(",", ".")) || 0,
-              toner_mg_por_cara: parseFloat(tonerMgCara.replace(",", ".")) || 0,
-              toner_modelo_id:
-                tonerModeloKey !== "__custom__" &&
+            toner_gramos_por_cartucho:
+              parseFloat(tonerGramos.replace(",", ".")) || 0,
+            toner_mg_por_cara: parseFloat(tonerMgCara.replace(",", ".")) || 0,
+            toner_modelo_id:
+              tonerModeloKey !== "__custom__" &&
                 esTonerModeloIdPersistible(tonerModeloKey)
-                  ? tonerModeloKey
-                  : null
-            }
+                ? tonerModeloKey
+                : null
+          }
           : {})
       });
     } catch (e) {
@@ -463,11 +463,11 @@ export function InsumoForm({
   const hojasPapelPreview =
     categoria === "papel"
       ? (() => {
-          const ev = parseFloat(equivVenta.replace(",", ".")) || 0;
-          return Number.isFinite(ev) && ev > 0
-            ? Math.round(ev)
-            : RENDIMIENTO_MAESTRO_PAPEL;
-        })()
+        const ev = parseFloat(equivVenta.replace(",", ".")) || 0;
+        return Number.isFinite(ev) && ev > 0
+          ? Math.round(ev)
+          : RENDIMIENTO_MAESTRO_PAPEL;
+      })()
       : RENDIMIENTO_MAESTRO_PAPEL;
 
   const equivalenciaCompra = useMemo(() => {
@@ -504,417 +504,419 @@ export function InsumoForm({
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-xs font-black text-slate-300 uppercase tracking-[0.2em] italic">
-        {isEdit ? "Editar Insumo" : "Nuevo Insumo"}
-      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <h2 className="text-xs font-black text-slate-300 uppercase tracking-[0.2em] italic">
+          {isEdit ? "Editar Insumo" : "Nuevo Insumo"}
+        </h2>
 
-      {isEdit && insumo && <ProductosAfectadosPanel insumoId={insumo.id} />}
+        {isEdit && insumo && <ProductosAfectadosPanel insumoId={insumo.id} />}
 
-      {/* Categoría + Unidad */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className={isEdit ? "opacity-60 pointer-events-none" : ""}>
-          <ActionSheetTrigger
-            label="Categoría"
-            displayValue={INSUMO_CATEGORIA_LABELS[categoria]}
-            onClick={() => !isEdit && setSheetCat(true)}
-            disabled={isEdit}
+        {/* Categoría + Unidad */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className={isEdit ? "opacity-60 pointer-events-none" : ""}>
+            <ActionSheetTrigger
+              label="Categoría"
+              displayValue={INSUMO_CATEGORIA_LABELS[categoria]}
+              onClick={() => !isEdit && setSheetCat(true)}
+              disabled={isEdit}
+            />
+          </div>
+          {compraSimple ? (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Unidad de compra
+              </label>
+              <p className="w-full p-3 bg-slate-50 rounded-sm font-bold text-sm border border-slate-100 text-slate-600">
+                {INSUMO_UNIDAD_LABELS[DEFAULT_UNIDAD[categoria] as InsumoUnidad]}
+              </p>
+            </div>
+          ) : (
+            <ActionSheetTrigger
+              label="Unidad"
+              displayValue={INSUMO_UNIDAD_LABELS[unidad]}
+              onClick={() => setSheetUnidad(true)}
+            />
+          )}
+        </div>
+
+        {/* Nombre */}
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+            Nombre <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej: Espiral 12mm Negro"
+            required
+            className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 focus:ring-2 focus:ring-blue-100 outline-none"
           />
         </div>
-        {compraSimple ? (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Unidad de compra
-            </label>
-            <p className="w-full p-3 bg-slate-50 rounded-sm font-bold text-sm border border-slate-100 text-slate-600">
-              {INSUMO_UNIDAD_LABELS[DEFAULT_UNIDAD[categoria] as InsumoUnidad]}
+
+        {/* Campos condicionales */}
+        <div className="grid grid-cols-2 gap-3">
+          {showMedida && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Medida (mm)
+              </label>
+              <input
+                type="number"
+                value={medidaMm}
+                onChange={(e) => setMedidaMm(e.target.value)}
+                placeholder="12"
+                className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
+              />
+            </div>
+          )}
+          {categoria === "espiral" && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Rango (tarifa)
+              </label>
+              <select
+                value={rangoAnillado}
+                onChange={(e) => setRangoAnillado(e.target.value)}
+                className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none cursor-pointer"
+              >
+                <option value="">Coincide con tarifa (opcional)</option>
+                <option value="Chico">Chico</option>
+                <option value="Mediano">Mediano</option>
+                <option value="Grande">Grande</option>
+              </select>
+            </div>
+          )}
+          {showColor && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Color
+              </label>
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="Negro, Azul..."
+                className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
+              />
+            </div>
+          )}
+          {showPapel && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Tipo de papel
+              </label>
+              <input
+                type="text"
+                value={tipoPapel}
+                onChange={(e) => setTipoPapel(e.target.value)}
+                placeholder="A4 75g"
+                className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
+              />
+            </div>
+          )}
+        </div>
+
+        {compraSimple &&
+          categoria !== "tinta" &&
+          categoria !== "papel" &&
+          categoria !== "toner" && (
+            <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
+              Cargá bultos y precio de esa compra.
             </p>
-          </div>
-        ) : (
-          <ActionSheetTrigger
-            label="Unidad"
-            displayValue={INSUMO_UNIDAD_LABELS[unidad]}
-            onClick={() => setSheetUnidad(true)}
-          />
+          )}
+        {compraSimple && categoria === "papel" && (
+          <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
+            Indicá <strong>hojas por resma</strong> abajo. El stock en depósito se
+            guarda en <strong>hojas</strong> (resmas × hojas/resma). En dashboard,
+            la alerta preventiva de papel común se aplica sobre todo cuando la
+            resma es de <strong>500 hojas</strong> (o si el tipo indica papel común).
+          </p>
         )}
-      </div>
-
-      {/* Nombre */}
-      <div className="space-y-1">
-        <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-          Nombre <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Ej: Espiral 12mm Negro"
-          required
-          className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 focus:ring-2 focus:ring-blue-100 outline-none"
-        />
-      </div>
-
-      {/* Campos condicionales */}
-      <div className="grid grid-cols-2 gap-3">
-        {showMedida && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Medida (mm)
+        {compraSimple && categoria === "tinta" && (
+          <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
+            <strong>Tinta:</strong> cargá los <strong>litros</strong> que tenés en
+            depósito (ej. <strong>5</strong> = cinco litros). La base guarda{" "}
+            <strong>mililitros</strong> para descontar bien por pedido.{" "}
+            <strong>Precio por litro</strong> de compra. El maestro{" "}
+            <strong>{RENDIMIENTO_MAESTRO_TINTA} páginas por ml</strong> define cuántos ml
+            gasta cada cara impresa en costos; no cambia cuántos litros declarás en
+            stock.
+          </p>
+        )}
+        {categoria === "papel" && (
+          <div className="rounded-sm border border-amber-300 bg-amber-50/50 px-3 py-3 space-y-2">
+            <label className="text-[10px] font-black text-amber-900 ml-0.5 uppercase">
+              Hojas por resma (o paquete) <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
-              value={medidaMm}
-              onChange={(e) => setMedidaMm(e.target.value)}
-              placeholder="12"
-              className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
-            />
-          </div>
-        )}
-        {categoria === "espiral" && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Rango (tarifa)
-            </label>
-            <select
-              value={rangoAnillado}
-              onChange={(e) => setRangoAnillado(e.target.value)}
-              className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none cursor-pointer"
-            >
-              <option value="">Coincide con tarifa (opcional)</option>
-              <option value="Chico">Chico</option>
-              <option value="Mediano">Mediano</option>
-              <option value="Grande">Grande</option>
-            </select>
-          </div>
-        )}
-        {showColor && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Color
-            </label>
-            <input
-              type="text"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="Negro, Azul..."
-              className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
-            />
-          </div>
-        )}
-        {showPapel && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Tipo de papel
-            </label>
-            <input
-              type="text"
-              value={tipoPapel}
-              onChange={(e) => setTipoPapel(e.target.value)}
-              placeholder="A4 75g"
-              className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
-            />
-          </div>
-        )}
-      </div>
-
-      {compraSimple &&
-        categoria !== "tinta" &&
-        categoria !== "papel" &&
-        categoria !== "toner" && (
-        <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          Cargá bultos y precio de esa compra.
-        </p>
-      )}
-      {compraSimple && categoria === "papel" && (
-        <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          Indicá <strong>hojas por resma</strong> abajo. El stock en depósito se
-          guarda en <strong>hojas</strong> (resmas × hojas/resma).
-        </p>
-      )}
-      {compraSimple && categoria === "tinta" && (
-        <p className="text-[9px] text-slate-500 font-semibold leading-snug -mt-1">
-          <strong>Tinta:</strong> cargá los <strong>litros</strong> que tenés en
-          depósito (ej. <strong>5</strong> = cinco litros). La base guarda{" "}
-          <strong>mililitros</strong> para descontar bien por pedido.{" "}
-          <strong>Precio por litro</strong> de compra. El maestro{" "}
-          <strong>{RENDIMIENTO_MAESTRO_TINTA} páginas por ml</strong> define cuántos ml
-          gasta cada cara impresa en costos; no cambia cuántos litros declarás en
-          stock.
-        </p>
-      )}
-      {categoria === "papel" && (
-        <div className="rounded-sm border border-amber-300 bg-amber-50/50 px-3 py-3 space-y-2">
-          <label className="text-[10px] font-black text-amber-900 ml-0.5 uppercase">
-            Hojas por resma (o paquete) <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={100000}
-            step={1}
-            value={equivVenta}
-            onChange={(e) => {
-              const v = e.target.value;
-              setEquivVenta(v);
-              setRendimiento(v);
-            }}
-            className="w-full max-w-[220px] p-3 bg-white rounded-sm font-black text-amber-950 border border-amber-200 outline-none"
-          />
-          <p className="text-[9px] text-amber-800 font-semibold leading-snug">
-            Típico: <strong>500</strong> hojas. Especiales: <strong>100</strong>,{" "}
-            <strong>20</strong>, etc. El precio de compra es por{" "}
-            <strong>resma/paquete</strong>; costo/hoja = precio ÷ hojas.
-          </p>
-        </div>
-      )}
-
-      {categoria === "toner" && (
-        <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
-            Física del tóner (el sistema calcula todo lo demás)
-          </p>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-              Perfil de referencia
-            </label>
-            <select
-              value={tonerModeloKey}
+              min={1}
+              max={100000}
+              step={1}
+              value={equivVenta}
               onChange={(e) => {
                 const v = e.target.value;
-                if (v === "__custom__") {
-                  setTonerModeloKey("__custom__");
-                  return;
-                }
-                const m = tonerModelosList.find((x) => x.id === v);
-                if (m) {
-                  setTonerModeloKey(v);
-                  setTonerGramos(String(m.gramos_por_cartucho));
-                  setTonerMgCara(String(m.mg_por_cara));
-                }
+                setEquivVenta(v);
+                setRendimiento(v);
               }}
-              disabled={tonerModelosLoading && tonerModelosList.length === 0}
-              className="w-full max-w-xl p-3 bg-white rounded-sm font-bold text-slate-900 border border-slate-200 outline-none text-sm"
-            >
-              <option value="__custom__">
-                Personalizado (editar gramos y mg abajo)
-              </option>
-              {esTonerModeloIdPersistible(tonerModeloKey) &&
-                !tonerModelosList.some((m) => m.id === tonerModeloKey) && (
-                  <option value={tonerModeloKey}>
-                    Referencia guardada (no aparece en el catálogo cargado)
-                  </option>
-                )}
-              {tonerModelosList.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nombre} — {m.gramos_por_cartucho} g · {m.mg_por_cara} mg/cara
+              className="w-full max-w-[220px] p-3 bg-white rounded-sm font-black text-amber-950 border border-amber-200 outline-none"
+            />
+            <p className="text-[9px] text-amber-800 font-semibold leading-snug">
+              Típico: <strong>500</strong> hojas. Especiales: <strong>100</strong>,{" "}
+              <strong>20</strong>, etc. El precio de compra es por{" "}
+              <strong>resma/paquete</strong>; costo/hoja = precio ÷ hojas.
+            </p>
+          </div>
+        )}
+
+        {categoria === "toner" && (
+          <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
+              Física del tóner (el sistema calcula todo lo demás)
+            </p>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                Perfil de referencia
+              </label>
+              <select
+                value={tonerModeloKey}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "__custom__") {
+                    setTonerModeloKey("__custom__");
+                    return;
+                  }
+                  const m = tonerModelosList.find((x) => x.id === v);
+                  if (m) {
+                    setTonerModeloKey(v);
+                    setTonerGramos(String(m.gramos_por_cartucho));
+                    setTonerMgCara(String(m.mg_por_cara));
+                  }
+                }}
+                disabled={tonerModelosLoading && tonerModelosList.length === 0}
+                className="w-full max-w-xl p-3 bg-white rounded-sm font-bold text-slate-900 border border-slate-200 outline-none text-sm"
+              >
+                <option value="__custom__">
+                  Personalizado (editar gramos y mg abajo)
                 </option>
-              ))}
-            </select>
-            <p className="text-[9px] text-slate-500 font-semibold leading-snug">
-              Elegí un perfil del catálogo para rellenar gramos y mg; después podés
-              afinar a mano (pasa a personalizado). El stock abajo sigue siendo en{" "}
-              <strong>cartuchos</strong>.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-                Gramos de tóner por cartucho <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min={0.1}
-                max={50000}
-                value={tonerGramos}
-                onChange={(e) => {
-                  setTonerGramos(e.target.value);
-                  setTonerModeloKey("__custom__");
-                }}
-                className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
-              />
-              <p className="text-[9px] text-slate-500 font-semibold">
-                Típico laser oficina ~<strong>60 g</strong> por cartucho.
+                {esTonerModeloIdPersistible(tonerModeloKey) &&
+                  !tonerModelosList.some((m) => m.id === tonerModeloKey) && (
+                    <option value={tonerModeloKey}>
+                      Referencia guardada (no aparece en el catálogo cargado)
+                    </option>
+                  )}
+                {tonerModelosList.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre} — {m.gramos_por_cartucho} g · {m.mg_por_cara} mg/cara
+                  </option>
+                ))}
+              </select>
+              <p className="text-[9px] text-slate-500 font-semibold leading-snug">
+                Elegí un perfil del catálogo para rellenar gramos y mg; después podés
+                afinar a mano (pasa a personalizado). El stock abajo sigue siendo en{" "}
+                <strong>cartuchos</strong>.
               </p>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-                mg por cara impresa (A4) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min={0.1}
-                max={500000}
-                value={tonerMgCara}
-                onChange={(e) => {
-                  setTonerMgCara(e.target.value);
-                  setTonerModeloKey("__custom__");
-                }}
-                className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
-              />
-              <p className="text-[9px] text-slate-500 font-semibold">
-                Referencia texto / ~5% cobertura: suele andar entre{" "}
-                <strong>40–120 mg</strong> por cara.
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                  Gramos de tóner por cartucho <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0.1}
+                  max={50000}
+                  value={tonerGramos}
+                  onChange={(e) => {
+                    setTonerGramos(e.target.value);
+                    setTonerModeloKey("__custom__");
+                  }}
+                  className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
+                />
+                <p className="text-[9px] text-slate-500 font-semibold">
+                  Típico laser oficina ~<strong>60 g</strong> por cartucho.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+                  mg por cara impresa (A4) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0.1}
+                  max={500000}
+                  value={tonerMgCara}
+                  onChange={(e) => {
+                    setTonerMgCara(e.target.value);
+                    setTonerModeloKey("__custom__");
+                  }}
+                  className="w-full p-3 bg-white rounded-sm font-black text-slate-900 border border-slate-200 outline-none"
+                />
+                <p className="text-[9px] text-slate-500 font-semibold">
+                  Referencia texto / ~5% cobertura: suele andar entre{" "}
+                  <strong>40–120 mg</strong> por cara.
+                </p>
+              </div>
+            </div>
+            {paginasTonerDerividas != null && (
+              <p className="text-[11px] text-slate-800 font-semibold leading-snug rounded-sm bg-white border border-slate-100 px-3 py-2">
+                <strong>≈ {paginasTonerDerividas} páginas</strong> por cartucho
+                (derivado: {tonerGramos} g × 1000 ÷ {tonerMgCara} mg/cara). El costo por
+                cara ≈ precio del cartucho ÷ {paginasTonerDerividas}. Abajo cargá{" "}
+                <strong>cuántos cartuchos</strong> tenés: el stock pasa a “páginas
+                equivalentes” para descontar <strong>por cada cara</strong> del PDF.
+              </p>
+            )}
+          </div>
+        )}
+
+        {CATEGORIAS_RENDIMIENTO_MAESTRO.includes(categoria) && (
+          <div className="space-y-2">
+            {rendimientoDistintoAlMaestro && insumo && (
+              <div className="rounded-sm border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-950 leading-snug">
+                <i className="fas fa-triangle-exclamation mr-1" />
+                En la base este insumo tiene rendimiento{" "}
+                <strong>{insumo.rendimiento}</strong>. Al guardar se reemplazará por el
+                maestro <strong>{rendimientoMaestroNum(categoria)}</strong> para que
+                costos y stock sigan las reglas del sistema.
+              </div>
+            )}
+            <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-wide">
+                Rendimiento (maestro — no editable)
+              </p>
+              <p className="text-sm font-black text-slate-900">
+                {categoria === "tinta" && (
+                  <>
+                    {RENDIMIENTO_MAESTRO_TINTA}{" "}
+                    <span className="text-slate-600 font-bold text-xs">
+                      páginas impresas por ml (costo de impresión; stock en ml)
+                    </span>
+                  </>
+                )}
+                {categoria === "espiral" && (
+                  <>
+                    {RENDIMIENTO_MAESTRO_ESPIRAL}{" "}
+                    <span className="text-slate-600 font-bold text-xs">
+                      unidades por paquete (lote estándar)
+                    </span>
+                  </>
+                )}
+              </p>
+              <p className="text-[9px] text-slate-600 font-semibold leading-snug">
+                Valor fijado por el sistema (misma base que SQL y reglas de negocio). No
+                se puede cambiar acá para evitar errores de costo (ej. espiral con
+                rendimiento 100 por accidente).
               </p>
             </div>
           </div>
-          {paginasTonerDerividas != null && (
-            <p className="text-[11px] text-slate-800 font-semibold leading-snug rounded-sm bg-white border border-slate-100 px-3 py-2">
-              <strong>≈ {paginasTonerDerividas} páginas</strong> por cartucho
-              (derivado: {tonerGramos} g × 1000 ÷ {tonerMgCara} mg/cara). El costo por
-              cara ≈ precio del cartucho ÷ {paginasTonerDerividas}. Abajo cargá{" "}
-              <strong>cuántos cartuchos</strong> tenés: el stock pasa a “páginas
-              equivalentes” para descontar <strong>por cada cara</strong> del PDF.
-            </p>
-          )}
-        </div>
-      )}
+        )}
 
-      {CATEGORIAS_RENDIMIENTO_MAESTRO.includes(categoria) && (
-        <div className="space-y-2">
-          {rendimientoDistintoAlMaestro && insumo && (
-            <div className="rounded-sm border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-950 leading-snug">
-              <i className="fas fa-triangle-exclamation mr-1" />
-              En la base este insumo tiene rendimiento{" "}
-              <strong>{insumo.rendimiento}</strong>. Al guardar se reemplazará por el
-              maestro <strong>{rendimientoMaestroNum(categoria)}</strong> para que
-              costos y stock sigan las reglas del sistema.
-            </div>
-          )}
-          <div className="rounded-sm border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wide">
-              Rendimiento (maestro — no editable)
-            </p>
-            <p className="text-sm font-black text-slate-900">
-              {categoria === "tinta" && (
-                <>
-                  {RENDIMIENTO_MAESTRO_TINTA}{" "}
-                  <span className="text-slate-600 font-bold text-xs">
-                    páginas impresas por ml (costo de impresión; stock en ml)
-                  </span>
-                </>
-              )}
-              {categoria === "espiral" && (
-                <>
-                  {RENDIMIENTO_MAESTRO_ESPIRAL}{" "}
-                  <span className="text-slate-600 font-bold text-xs">
-                    unidades por paquete (lote estándar)
-                  </span>
-                </>
-              )}
-            </p>
-            <p className="text-[9px] text-slate-600 font-semibold leading-snug">
-              Valor fijado por el sistema (misma base que SQL y reglas de negocio). No
-              se puede cambiar acá para evitar errores de costo (ej. espiral con
-              rendimiento 100 por accidente).
-            </p>
+        {/* Costo base + Stock */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+              {compraSimple ? etiquetaPrecioBulto(categoria) : "Costo base (compra)"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={precioCompra}
+              onChange={(e) => setPrecioCompra(e.target.value)}
+              className="w-full p-3 bg-slate-50 rounded-sm font-black text-green-700 border border-slate-100 outline-none"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+              {compraSimple ? etiquetaStockCategoria(categoria) : "Stock actual"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={stockActual}
+              onChange={(e) => setStockActual(e.target.value)}
+              className="w-full p-3 bg-slate-50 rounded-sm font-black text-blue-700 border border-slate-100 outline-none"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+              {compraSimple
+                ? etiquetaMinimoCategoria(categoria)
+                : "Stock mínimo"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={stockMinimo}
+              onChange={(e) => setStockMinimo(e.target.value)}
+              className="w-full p-3 bg-slate-50 rounded-sm font-black text-amber-700 border border-slate-100 outline-none"
+              required
+            />
           </div>
         </div>
-      )}
 
-      {/* Costo base + Stock */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-            {compraSimple ? etiquetaPrecioBulto(categoria) : "Costo base (compra)"}{" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={precioCompra}
-            onChange={(e) => setPrecioCompra(e.target.value)}
-            className="w-full p-3 bg-slate-50 rounded-sm font-black text-green-700 border border-slate-100 outline-none"
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-            {compraSimple ? etiquetaStockCategoria(categoria) : "Stock actual"}{" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={stockActual}
-            onChange={(e) => setStockActual(e.target.value)}
-            className="w-full p-3 bg-slate-50 rounded-sm font-black text-blue-700 border border-slate-100 outline-none"
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-            {compraSimple
-              ? etiquetaMinimoCategoria(categoria)
-              : "Stock mínimo"}{" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={stockMinimo}
-            onChange={(e) => setStockMinimo(e.target.value)}
-            className="w-full p-3 bg-slate-50 rounded-sm font-black text-amber-700 border border-slate-100 outline-none"
-            required
-          />
-        </div>
-      </div>
-
-      {compraSimple && equivalenciaCompra && (
-        <p className="text-[10px] text-slate-600 font-semibold leading-snug rounded-sm bg-slate-50 border border-slate-100 px-3 py-2">
-          {categoria === "tinta" ? (
-            <>
-              <strong>
-                {equivalenciaCompra.unidades.toLocaleString("es-AR", {
-                  maximumFractionDigits: 1
-                })}
-              </strong>{" "}
-              ml en depósito · costo{" "}
-              <strong>{formatCurrency(equivalenciaCompra.cu)}</strong> por ml (precio
-              litro ÷ 1000).
-            </>
-          ) : (
-            <>
-              Esto equivale a{" "}
-              <strong>
-                {equivalenciaCompra.unidades.toLocaleString("es-AR", {
-                  maximumFractionDigits: 1
-                })}
-              </strong>{" "}
-              unidades de consumo ({equivalenciaCompra.detalle}) a un costo de{" "}
-              <strong>{formatCurrency(equivalenciaCompra.cu)}</strong> cada una.
-            </>
-          )}
-        </p>
-      )}
-
-      {showContenidoGenerico && (
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
-            Rendimiento / unidades por lote <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="1"
-            min="1"
-            value={equivVenta}
-            onChange={(e) => setEquivVenta(e.target.value)}
-            placeholder="1"
-            className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
-          />
-          <p className="text-[9px] text-slate-400 font-semibold leading-snug">
-            Costo real = costo compra ÷ rendimiento del lote. Papel, tinta y espiral
-            usan reglas fijas arriba; el tóner usa la física (perfil o manual).
+        {compraSimple && equivalenciaCompra && (
+          <p className="text-[10px] text-slate-600 font-semibold leading-snug rounded-sm bg-slate-50 border border-slate-100 px-3 py-2">
+            {categoria === "tinta" ? (
+              <>
+                <strong>
+                  {equivalenciaCompra.unidades.toLocaleString("es-AR", {
+                    maximumFractionDigits: 1
+                  })}
+                </strong>{" "}
+                ml en depósito · costo{" "}
+                <strong>{formatCurrency(equivalenciaCompra.cu)}</strong> por ml (precio
+                litro ÷ 1000).
+              </>
+            ) : (
+              <>
+                Esto equivale a{" "}
+                <strong>
+                  {equivalenciaCompra.unidades.toLocaleString("es-AR", {
+                    maximumFractionDigits: 1
+                  })}
+                </strong>{" "}
+                unidades de consumo ({equivalenciaCompra.detalle}) a un costo de{" "}
+                <strong>{formatCurrency(equivalenciaCompra.cu)}</strong> cada una.
+              </>
+            )}
           </p>
-        </div>
-      )}
+        )}
 
-      {isEdit && insumo && (
-        <div className="pt-1 space-y-2">
+        {showContenidoGenerico && (
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">
+              Rendimiento / unidades por lote <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="1"
+              min="1"
+              value={equivVenta}
+              onChange={(e) => setEquivVenta(e.target.value)}
+              placeholder="1"
+              className="w-full p-3 bg-slate-50 rounded-sm font-bold border border-slate-100 outline-none"
+            />
+            <p className="text-[9px] text-slate-400 font-semibold leading-snug">
+              Costo real = costo compra ÷ rendimiento del lote. Papel, tinta y espiral
+              usan reglas fijas arriba; el tóner usa la física (perfil o manual).
+            </p>
+          </div>
+        )}
+
+        {isEdit && insumo && (
+          <div className="pt-1 space-y-2">
             {insumo.activo ? (
               onDesactivar && (
                 <button
@@ -946,51 +948,51 @@ export function InsumoForm({
               </button>
             )}
           </div>
-      )}
+        )}
 
-      {/* Botones */}
-      <div className="flex gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-4 font-bold text-slate-400 text-sm cursor-pointer bg-slate-50 rounded-sm"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          disabled={saving || !nombre.trim()}
-          className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-sm shadow-lg cursor-pointer disabled:opacity-50"
-        >
-          {saving ? (
-            <>
-              <i className="fas fa-circle-notch fa-spin mr-2" />
-              Guardando...
-            </>
-          ) : isEdit ? (
-            "Guardar Cambios"
-          ) : (
-            "Crear Insumo"
-          )}
-        </button>
-      </div>
-    </form>
-    <ActionSheet
-      open={sheetCat}
-      onClose={() => setSheetCat(false)}
-      title="Categoría"
-      options={OPTS_CAT}
-      value={categoria}
-      onChange={(v) => setCategoria(v as InsumoCategoria)}
-    />
-    <ActionSheet
-      open={sheetUnidad}
-      onClose={() => setSheetUnidad(false)}
-      title="Unidad"
-      options={OPTS_UNIDAD}
-      value={unidad}
-      onChange={(v) => setUnidad(v as InsumoUnidad)}
-    />
+        {/* Botones */}
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-4 font-bold text-slate-400 text-sm cursor-pointer bg-slate-50 rounded-sm"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !nombre.trim()}
+            className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-sm shadow-lg cursor-pointer disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <i className="fas fa-circle-notch fa-spin mr-2" />
+                Guardando...
+              </>
+            ) : isEdit ? (
+              "Guardar Cambios"
+            ) : (
+              "Crear Insumo"
+            )}
+          </button>
+        </div>
+      </form>
+      <ActionSheet
+        open={sheetCat}
+        onClose={() => setSheetCat(false)}
+        title="Categoría"
+        options={OPTS_CAT}
+        value={categoria}
+        onChange={(v) => setCategoria(v as InsumoCategoria)}
+      />
+      <ActionSheet
+        open={sheetUnidad}
+        onClose={() => setSheetUnidad(false)}
+        title="Unidad"
+        options={OPTS_UNIDAD}
+        value={unidad}
+        onChange={(v) => setUnidad(v as InsumoUnidad)}
+      />
     </>
   );
 }
