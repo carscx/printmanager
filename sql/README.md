@@ -50,6 +50,7 @@ Ejecutá **en este orden**:
 | 33 | `35_plantillas_whatsapp_sena_y_textos.sql` |
 | 34 | `36_plantillas_match_criterio.sql` |
 | 35 | `37_equipo_roi.sql` |
+| — | **`60_rls_audit_fix.sql`** — corrección RLS / alertas Security Advisor (ver abajo) |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -107,6 +108,17 @@ Ver **`archive/README.md`**. Incluye el migrador legacy de stock de tinta en ml 
 - **Pedidos**: 3 pedidos demo (entregado, taller, pendiente con seña).
 - **Plantillas WhatsApp**: 7 plantillas (incluye `listo` para avisar retiro).
 - **Reportes** (admin): rentabilidad / consumos donde aplique.
+
+---
+
+## Alertas RLS en Supabase (`rls_disabled_in_public`)
+
+Si Security Advisor marca tablas **publicly accessible**:
+
+1. En **SQL Editor** del proyecto (dev y prod), ejecutá **`60_rls_audit_fix.sql`** una vez.
+2. El script es **idempotente** y **no borra datos** (solo RLS, políticas y GRANTs).
+3. Refrescá **Database → Security Advisor** y probá la app con usuario logueado.
+4. Si ves `permission denied` (42501), el script ya incluye los GRANTs de `30`; cerrá sesión y volvé a entrar.
 
 ---
 
