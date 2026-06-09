@@ -445,7 +445,7 @@ export function NuevoPedidoPage() {
       paginas: lineParams.paginas,
       copias: lineParams.copias,
       tipo_impresion: soloAnillado
-        ? "Solo anillado (copias del cliente)"
+        ? "Solo anillado"
         : (() => {
             const label =
               (precioImp?.nombre ?? "").trim() ||
