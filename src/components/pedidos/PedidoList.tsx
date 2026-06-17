@@ -3,7 +3,7 @@ import { PedidoCard } from "./PedidoCard";
 
 interface PedidoListProps {
   pedidos: Pedido[];
-  isAdmin: boolean;
+  puedeDescargarComprobante: boolean;
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
@@ -24,7 +24,7 @@ interface PedidoListProps {
 
 export function PedidoList({
   pedidos,
-  isAdmin,
+  puedeDescargarComprobante,
   onBorrar,
   onEditar,
   onTransition,
@@ -49,7 +49,7 @@ export function PedidoList({
         <PedidoCard
           key={p.id}
           pedido={p}
-          isAdmin={isAdmin}
+          puedeDescargarComprobante={puedeDescargarComprobante}
           onBorrar={onBorrar}
           onEditar={onEditar}
           onTransition={onTransition}

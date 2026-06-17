@@ -244,6 +244,7 @@ export function PedidosPage() {
   }, [load]);
 
   const puedeEditarFormaPago = user?.role !== "operador";
+  const puedeDescargarComprobante = isAdmin || user?.role === "operador";
 
   const handleActualizarFormaPago = async (
     id: string,
@@ -768,7 +769,7 @@ export function PedidosPage() {
         ) : (
           <PedidoList
             pedidos={pedidos}
-            isAdmin={isAdmin}
+            puedeDescargarComprobante={puedeDescargarComprobante}
             onBorrar={handleBorrar}
             onEditar={handleEditar}
             onTransition={handleTransition}

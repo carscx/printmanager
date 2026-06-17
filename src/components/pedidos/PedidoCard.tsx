@@ -14,7 +14,7 @@ import { showToast } from "../ui/Toast";
 
 interface PedidoCardProps {
   pedido: Pedido;
-  isAdmin: boolean;
+  puedeDescargarComprobante: boolean;
   onBorrar: (id: string) => void;
   onEditar: (p: Pedido) => void;
   onTransition: (p: Pedido, nuevo: EstadoPedido) => void;
@@ -36,7 +36,7 @@ interface PedidoCardProps {
 
 export function PedidoCard({
   pedido: p,
-  isAdmin,
+  puedeDescargarComprobante,
   onBorrar,
   onEditar,
   onTransition,
@@ -71,7 +71,8 @@ export function PedidoCard({
   const mostrarFormaTotal =
     (pagoTotal && totalP > 0) || Boolean(p.forma_pago_total);
   const estaPagadoPorEstado = estadoRaw === "pagado" || estadoRaw === "entregado";
-  const mostrarComprobante = isAdmin && (pagoTotal || estaPagadoPorEstado);
+  const mostrarComprobante =
+    puedeDescargarComprobante && (pagoTotal || estaPagadoPorEstado);
 
   const etiquetaEstado: Record<EstadoPedido, string> = {
     presupuesto: "Presupuesto",
