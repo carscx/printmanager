@@ -12,7 +12,12 @@ import { AjusteMasivoSheet } from "../components/precios/AjusteMasivoSheet.tsx";
 
 type SeccionActiva = "impresion" | "anillado" | "reglas" | "costos";
 
-export function PreciosPage() {
+interface PreciosPageProps {
+  /** Operador: ve los precios pero no puede editarlos. */
+  soloLectura?: boolean;
+}
+
+export function PreciosPage({ soloLectura = false }: PreciosPageProps) {
   const {
     preciosImpresion,
     preciosAnillado,
@@ -59,35 +64,8 @@ export function PreciosPage() {
     { id: "costos", label: "Pagos / resumen", icon: "fa-sliders" }
   ];
 
-  return (
-    <section className="animate-slide-in-bottom space-y-4">
-      {errorImpresion && (
-        <div
-          className="rounded-sm border border-red-200 bg-red-50 px-3 py-2.5 text-[10px] font-bold text-red-900 leading-snug"
-          role="alert"
-        >
-          <i className="fas fa-triangle-exclamation mr-1" />
-          No se pudieron cargar las tarifas de impresión desde Supabase.{" "}
-          <span className="font-mono font-normal opacity-90">{errorImpresion}</span>
-        </div>
-      )}
-      <div className="flex gap-2 flex-wrap">
-        {secciones.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSeccion(s.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-sm text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-              seccion === s.id
-                ? "bg-slate-900 text-white shadow-lg"
-                : "bg-white text-slate-400 border border-slate-100"
-            }`}
-          >
-            <i className={`fas ${s.icon}`} />
-            {s.label}
-          </button>
-        ))}
-      </div>
-
+  const contenido = (
+    <>
       {seccion === "impresion" && (
         <PreciosImpresionGrid
           precios={preciosImpresion}
@@ -132,12 +110,65 @@ export function PreciosPage() {
         <ConfigCostosPanel configCostos={configCostos} onReload={reload} />
       )}
 
-      {showAjuste && (
+      {!soloLectura && showAjuste && (
         <AjusteMasivoSheet
           tipo={ajusteTipo}
           onAjustar={handleAjusteMasivo}
           onClose={() => setShowAjuste(false)}
         />
+      )}
+    </>
+  );
+
+  return (
+    <section className="animate-slide-in-bottom space-y-4">
+      {errorImpresion && (
+        <div
+          className="rounded-sm border border-red-200 bg-red-50 px-3 py-2.5 text-[10px] font-bold text-red-900 leading-snug"
+          role="alert"
+        >
+          <i className="fas fa-triangle-exclamation mr-1" />
+          No se pudieron cargar las tarifas de impresión desde Supabase.{" "}
+          <span className="font-mono font-normal opacity-90">{errorImpresion}</span>
+        </div>
+      )}
+
+      {soloLectura && (
+        <div
+          className="rounded-sm border border-sky-200 bg-sky-50 px-3 py-2.5 text-[10px] font-black text-sky-900 uppercase tracking-wider leading-snug"
+          role="status"
+        >
+          <i className="fas fa-eye mr-1" />
+          Modo solo lectura: podés consultar los precios pero no modificarlos.
+        </div>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        {secciones.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSeccion(s.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-sm text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+              seccion === s.id
+                ? "bg-slate-900 text-white shadow-lg"
+                : "bg-white text-slate-400 border border-slate-100"
+            }`}
+          >
+            <i className={`fas ${s.icon}`} />
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {soloLectura ? (
+        <fieldset
+          disabled
+          className="m-0 min-w-0 border-0 p-0 space-y-4 disabled:opacity-100"
+        >
+          {contenido}
+        </fieldset>
+      ) : (
+        contenido
       )}
     </section>
   );

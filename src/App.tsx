@@ -129,9 +129,7 @@ function AuthenticatedShell({
                 path="/precios"
                 element={
                   <ProtectedRoute user={user}>
-                    <NonOperadorRoute user={user}>
-                      <PreciosPage />
-                    </NonOperadorRoute>
+                    <PreciosPage soloLectura={user.role === "operador"} />
                   </ProtectedRoute>
                 }
               />
