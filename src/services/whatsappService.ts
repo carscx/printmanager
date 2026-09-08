@@ -6,6 +6,10 @@ import type {
 import type { ConfigCosto } from "../types/precio";
 import { formatCurrency, formatDateFromInput } from "../utils/formatters";
 import { totalVentaPedido } from "../utils/pedidoTotalVenta";
+import {
+  detalleItemProductoCerrado,
+  esItemProductoCerrado
+} from "../utils/pedidoItemProducto";
 
 interface RenderContext {
   pedido: Pedido;
@@ -62,6 +66,9 @@ function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
       : "";
 
   const itemLines = items.map((it) => {
+    if (esItemProductoCerrado(it)) {
+      return detalleItemProductoCerrado(it);
+    }
     const paginas = it.paginas || 0;
     const copias = it.copias ?? 1;
     const tipo = it.tipo_impresion || "B/N";

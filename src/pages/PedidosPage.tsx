@@ -12,6 +12,7 @@ import { showToast } from "../components/ui/Toast";
 import { SkeletonPedidoList } from "../components/ui/Skeleton";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { useCartStore } from "../store/useCartStore";
+import { pedidoEsProductoCerrado } from "../utils/pedidoItemProducto";
 import { api, type HistorialFiltros } from "../services/api";
 import { normalizarEstadoPedido } from "../utils/pedidoEstado";
 import { formatCurrency } from "../utils/formatters";
@@ -302,6 +303,10 @@ export function PedidosPage() {
       const full = await api.fetchPedidoById(p.id);
       if (!full) {
         showToast("No se encontró el pedido", "error");
+        return;
+      }
+      if (pedidoEsProductoCerrado(full)) {
+        navigate("/nuevo-producto", { state: { editandoPedidoId: full.id } });
         return;
       }
       useCartStore.getState().hydrateFromPedido(full);

@@ -51,6 +51,7 @@ Ejecutá **en este orden**:
 | 34 | `36_plantillas_match_criterio.sql` |
 | 35 | `37_equipo_roi.sql` |
 | — | **`60_rls_audit_fix.sql`** — corrección RLS / alertas Security Advisor (ver abajo) |
+| — | **`61_productos_cerrados.sql`** — catálogo de productos cerrados (Agenda Semanal), BOM fijo y explosión por `producto_id` |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -119,6 +120,12 @@ Si Security Advisor marca tablas **publicly accessible**:
 2. El script es **idempotente** y **no borra datos** (solo RLS, políticas y GRANTs).
 3. Refrescá **Database → Security Advisor** y probá la app con usuario logueado.
 4. Si ves `permission denied` (42501), el script ya incluye los GRANTs de `30`; cerrá sesión y volvé a entrar.
+
+---
+
+## Productos cerrados (`61`)
+
+Después de `60`, ejecutá **`61_productos_cerrados.sql`** una vez (idempotente en tablas/seed). Crea `productos`, `productos_insumos`, `pedido_items.producto_id` y redefine `rpc_explotar_bom_pedido`. El precio y las hojas de Agenda Semanal se cargan en la app (**Precios → Productos**); el papel mate se elige entre insumos existentes.
 
 ---
 

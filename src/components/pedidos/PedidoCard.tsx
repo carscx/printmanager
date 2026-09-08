@@ -11,6 +11,10 @@ import { normalizarEstadoPedido } from "../../utils/pedidoEstado";
 import { totalVentaPedido } from "../../utils/pedidoTotalVenta";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { showToast } from "../ui/Toast";
+import {
+  esItemProductoCerrado,
+  labelItemProductoCerrado
+} from "../../utils/pedidoItemProducto";
 
 interface PedidoCardProps {
   pedido: Pedido;
@@ -273,10 +277,16 @@ export function PedidoCard({
               className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-2 flex-wrap"
             >
               <span className="w-1 h-1 bg-slate-300 rounded-full" />
-              {it.paginas || 0} PAG{" "}
-              {(it.copias ?? 1) > 1 ? `×${it.copias}` : ""} |{" "}
-              {it.tipo_impresion} |{" "}
-              {getAnilladoLabel(it.anillado, it.anillado_medida_mm)}
+              {esItemProductoCerrado(it) ? (
+                labelItemProductoCerrado(it)
+              ) : (
+                <>
+                  {it.paginas || 0} PAG{" "}
+                  {(it.copias ?? 1) > 1 ? `×${it.copias}` : ""} |{" "}
+                  {it.tipo_impresion} |{" "}
+                  {getAnilladoLabel(it.anillado, it.anillado_medida_mm)}
+                </>
+              )}
               {it.descuento_porcentaje != null &&
                 Number(it.descuento_porcentaje) > 0 && (
                   <> | -{it.descuento_porcentaje}% DESC</>

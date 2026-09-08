@@ -131,7 +131,8 @@ function mapItemToDB(it: PedidoItem, pedidoId: string) {
     precio_anillado_id: it.precio_anillado_id ?? null,
     anillado_medida_mm: it.anillado_medida_mm ?? null,
     doble_faz: it.doble_faz ?? false,
-    impreso: it.impreso ?? false
+    impreso: it.impreso ?? false,
+    ...(it.producto_id ? { producto_id: it.producto_id } : {})
   };
 }
 

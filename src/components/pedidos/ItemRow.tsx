@@ -1,5 +1,9 @@
 import type { PedidoItem } from "../../types/pedido";
 import { Badge } from "../ui/Badge";
+import {
+  esItemProductoCerrado,
+  labelItemProductoCerrado
+} from "../../utils/pedidoItemProducto";
 
 interface ItemRowProps {
   item: PedidoItem;
@@ -61,12 +65,16 @@ export function ItemRow({
     >
       <div className="flex-1 min-w-0">
         <p className="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-0.5 truncate">
-          {item.nombre_archivo || "Archivo"}
+          {esItemProductoCerrado(item)
+            ? "Producto"
+            : item.nombre_archivo || "Archivo"}
         </p>
         <p className="text-[10px] font-black text-slate-800 uppercase leading-none mb-1 text-ellipsis overflow-hidden">
-          {item.paginas} PAG
-          {(item.copias ?? 1) > 1 ? ` × ${item.copias} cop` : ""} |{" "}
-          {item.tipo_impresion || "B/N"}
+          {esItemProductoCerrado(item)
+            ? labelItemProductoCerrado(item)
+            : `${item.paginas} PAG${
+                (item.copias ?? 1) > 1 ? ` × ${item.copias} cop` : ""
+              } | ${item.tipo_impresion || "B/N"}`}
         </p>
         <div className="flex gap-2 mb-1 flex-wrap">
           {item.solo_anillado && (

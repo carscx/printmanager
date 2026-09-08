@@ -3,6 +3,10 @@ import autoTable from "jspdf-autotable";
 import type { Pedido, PedidoItem } from "../types/pedido";
 import { formatCurrency, formatDateFromInput } from "../utils/formatters";
 import { totalVentaPedido } from "../utils/pedidoTotalVenta";
+import {
+  esItemProductoCerrado,
+  nombreProductoCerrado
+} from "../utils/pedidoItemProducto";
 
 type JsPDFWithPlugin = jsPDF & {
   lastAutoTable?: { finalY: number };
@@ -73,11 +77,14 @@ export function descargarPedidoControlPdf(
     startY: 78,
     head: [["Archivo", "Detalle", "Anillado", "Importe"]],
     body: items.map((it, i) => {
-      const detalle = `${it.paginas || 0} pág${(it.copias ?? 1) > 1 ? ` x${it.copias}` : ""} · ${it.tipo_impresion || "-"}`;
+      const copias = it.copias ?? 1;
+      const detalle = esItemProductoCerrado(it)
+        ? `${nombreProductoCerrado(it)}${copias > 1 ? ` x${copias}` : ""}`
+        : `${it.paginas || 0} pág${copias > 1 ? ` x${copias}` : ""} · ${it.tipo_impresion || "-"}`;
       return [
-        it.nombre_archivo || `Archivo ${i + 1}`,
+        it.nombre_archivo || (esItemProductoCerrado(it) ? nombreProductoCerrado(it) : `Archivo ${i + 1}`),
         detalle,
-        formatAnillado(it),
+        esItemProductoCerrado(it) ? "—" : formatAnillado(it),
         formatCurrency(Number(it.precio_unitario || 0))
       ];
     }),

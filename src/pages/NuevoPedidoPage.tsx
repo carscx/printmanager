@@ -33,6 +33,7 @@ import {
   descRecStateFromItem,
   parseTipoImpresionFromItem
 } from "../utils/pedidoItemForm";
+import { VolverButton } from "../components/ui/VolverButton";
 
 const ESTADO_EDICION_OPTS: { value: EstadoPedido; label: string }[] = [
   { value: "presupuesto", label: "Presupuesto" },
@@ -658,8 +659,14 @@ export function NuevoPedidoPage() {
   }, []);
 
 
+  const volverSinGuardar = () => {
+    cart.reset();
+    navigate("/pedidos");
+  };
+
   return (
     <section className="animate-slide-in-bottom space-y-4 lg:space-y-0">
+      <VolverButton onClick={volverSinGuardar} />
       {cart.editandoPedidoId && (
         <div className="space-y-3">
           <div className="rounded-sm border-2 border-amber-400 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-950 shadow-sm leading-snug">

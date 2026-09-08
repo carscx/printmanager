@@ -10,6 +10,7 @@ import { HomeRedirect } from "./pages/HomeRedirect";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { PedidosPage } from "./pages/PedidosPage";
 import { NuevoPedidoPage } from "./pages/NuevoPedidoPage";
+import { NuevoProductoPage } from "./pages/NuevoProductoPage";
 import { VentaPresupuestoPage } from "./pages/VentaPresupuestoPage";
 import { InsumosPage } from "./pages/InsumosPage";
 import { EquiposPage } from "./pages/EquiposPage";
@@ -114,6 +115,14 @@ function AuthenticatedShell({
                 element={
                   <ProtectedRoute user={user}>
                     <NuevoPedidoPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/nuevo-producto"
+                element={
+                  <ProtectedRoute user={user}>
+                    <NuevoProductoPage />
                   </ProtectedRoute>
                 }
               />

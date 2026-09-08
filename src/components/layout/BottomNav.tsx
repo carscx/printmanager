@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { BottomSheet } from "../ui/BottomSheet";
+import { NuevoDocumentoSheet } from "./NuevoDocumentoSheet";
 import { buildNavItems, isNavItemActive, type NavItem } from "../../config/navItems";
 import type { UserRole } from "../../types/auth";
 
@@ -34,6 +35,7 @@ export function BottomNav({
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [nuevoOpen, setNuevoOpen] = useState(false);
   const mobileMore = buildMobileMore(isAdmin, role);
 
   const isActive = (path: string) => isNavItemActive(path, location.pathname);
@@ -60,9 +62,7 @@ export function BottomNav({
           </button>
 
           <button
-            onClick={() =>
-              navigate("/nuevo-pedido", { state: { modo: "nuevo" } })
-            }
+            onClick={() => setNuevoOpen(true)}
             className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 cursor-pointer transition-colors ${
               isActive("/nuevo-pedido") ? "text-blue-600" : "text-slate-400"
             }`}
@@ -113,6 +113,11 @@ export function BottomNav({
           ))}
         </div>
       </BottomSheet>
+
+      <NuevoDocumentoSheet
+        open={nuevoOpen}
+        onClose={() => setNuevoOpen(false)}
+      />
     </>
   );
 }

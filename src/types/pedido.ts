@@ -17,6 +17,8 @@ export interface PedidoItem {
   doble_faz?: boolean;
   /** Flag operativo para trabajos de impresión: no impacta estado del pedido. */
   impreso?: boolean;
+  /** Producto cerrado (Agenda Semanal, …). Si está seteado, no es cotización de impresión. */
+  producto_id?: string | null;
   // Descuentos y recargos
   descuento_porcentaje?: number | null;
   descuento_monto?: number | null;

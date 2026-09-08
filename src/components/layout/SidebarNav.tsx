@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { buildNavItems, isNavItemActive } from "../../config/navItems";
 import { useStockBajo } from "../../hooks/useInsumos";
 import { StockAlertasCriticas } from "../dashboard/StockAlertasCriticas";
+import { NuevoDocumentoSheet } from "./NuevoDocumentoSheet";
 import type { UserRole } from "../../types/auth";
 
 export function SidebarNav({
@@ -15,6 +17,7 @@ export function SidebarNav({
   const location = useLocation();
   const items = buildNavItems(isAdmin, role);
   const { alertas } = useStockBajo(true);
+  const [nuevoOpen, setNuevoOpen] = useState(false);
 
   return (
     <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-white border-r border-slate-100 py-8 px-4 shadow-sm">
@@ -31,12 +34,9 @@ export function SidebarNav({
             <button
               key={`${item.path}-${item.label}`}
               onClick={() =>
-                navigate(
-                  item.path,
-                  item.path === "/nuevo-pedido"
-                    ? { state: { modo: "nuevo" } }
-                    : undefined
-                )
+                item.path === "/nuevo-pedido"
+                  ? setNuevoOpen(true)
+                  : navigate(item.path)
               }
               className={`flex items-center gap-3 px-4 py-3 rounded-sm font-bold text-base transition-colors text-left w-full ${
                 isActive
@@ -61,6 +61,10 @@ export function SidebarNav({
       <div className="mt-auto pt-4 border-t border-slate-100 shrink-0">
         <StockAlertasCriticas alertas={alertas} compact />
       </div>
+      <NuevoDocumentoSheet
+        open={nuevoOpen}
+        onClose={() => setNuevoOpen(false)}
+      />
     </aside>
   );
 }

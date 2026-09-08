@@ -59,7 +59,9 @@ export function isNavItemActive(path: string, pathname: string): boolean {
   }
   if (path === "/nuevo-pedido") {
     return (
-      pathname === "/nuevo-pedido" || pathname === "/venta"
+      pathname === "/nuevo-pedido" ||
+      pathname === "/nuevo-producto" ||
+      pathname === "/venta"
     );
   }
   if (path === "/") return pathname === "/";

@@ -9,8 +9,9 @@ import { ConfigCostosPanel } from "../components/precios/ConfigCostosPanel.tsx";
 import { ConfiguracionNegocioPanel } from "../components/precios/ConfiguracionNegocioPanel.tsx";
 import { ReglasNegocioPanel } from "../components/precios/ReglasNegocioPanel.tsx";
 import { AjusteMasivoSheet } from "../components/precios/AjusteMasivoSheet.tsx";
+import { ProductosCerradosPanel } from "../components/precios/ProductosCerradosPanel.tsx";
 
-type SeccionActiva = "impresion" | "anillado" | "reglas" | "costos";
+type SeccionActiva = "impresion" | "anillado" | "productos" | "reglas" | "costos";
 
 interface PreciosPageProps {
   /** Operador: ve los precios pero no puede editarlos. */
@@ -60,6 +61,7 @@ export function PreciosPage({ soloLectura = false }: PreciosPageProps) {
   const secciones: { id: SeccionActiva; label: string; icon: string }[] = [
     { id: "impresion", label: "Impresión", icon: "fa-print" },
     { id: "anillado", label: "Anillado", icon: "fa-ring" },
+    { id: "productos", label: "Productos", icon: "fa-box" },
     { id: "reglas", label: "Reglas de negocio", icon: "fa-diagram-project" },
     { id: "costos", label: "Pagos / resumen", icon: "fa-sliders" }
   ];
@@ -92,6 +94,10 @@ export function PreciosPage({ soloLectura = false }: PreciosPageProps) {
           equipos={equipos}
           costosListos={!loadingCostos}
         />
+      )}
+
+      {seccion === "productos" && (
+        <ProductosCerradosPanel insumos={insumos} />
       )}
 
       {seccion === "reglas" && (
