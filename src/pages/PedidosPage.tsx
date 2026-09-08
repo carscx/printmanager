@@ -306,7 +306,8 @@ export function PedidosPage() {
         return;
       }
       if (pedidoEsProductoCerrado(full)) {
-        navigate("/nuevo-producto", { state: { editandoPedidoId: full.id } });
+        useCartStore.getState().hydrateFromPedido(full);
+        navigate("/nuevo-producto");
         return;
       }
       useCartStore.getState().hydrateFromPedido(full);

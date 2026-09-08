@@ -7,10 +7,12 @@ import {
 } from "react";
 import { addCalendarDaysFromTodayAR } from "../../utils/dateAr";
 
+const DIAS_DEFAULT = 5;
+
 const QUICK = [
-  { dias: 1, label: "Mañana" },
-  { dias: 2, label: "Próximos dos días" },
-  { dias: 4, label: "Próximos 4 días" }
+  { dias: 5, label: "Próximos 5 días" },
+  { dias: 7, label: "Próximos 7 días" },
+  { dias: 10, label: "Próximos 10 días" }
 ] as const;
 
 function fechaRapida(dias: number): string {
@@ -42,6 +44,11 @@ export const FechaEntregaSelector = forwardRef<
   useLayoutEffect(() => {
     if (error) setPersonalizado(true);
   }, [error]);
+
+  useEffect(() => {
+    if (value || error) return;
+    onChange(fechaRapida(DIAS_DEFAULT));
+  }, [value, error, onChange]);
 
   useEffect(() => {
     if (!value) {
@@ -97,7 +104,7 @@ export const FechaEntregaSelector = forwardRef<
         <button
           type="button"
           onClick={openPersonalizado}
-          className={`py-3 px-2 rounded-sm text-[10px] font-black uppercase tracking-wide border-2 transition-all col-span-2 sm:col-span-1 ${
+          className={`py-3 px-2 rounded-sm text-[10px] font-black uppercase tracking-wide border-2 transition-all ${
             personalizado
               ? "border-violet-600 bg-violet-600 text-white"
               : "border-slate-100 bg-white text-slate-600 hover:border-slate-200"

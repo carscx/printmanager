@@ -24,6 +24,7 @@ interface CartProps {
   editingItemIndex?: number | null;
   onEditItem?: (index: number) => void;
   onRemoveItem?: (index: number) => void;
+  emptyMessage?: string;
 }
 
 export function Cart({
@@ -31,7 +32,8 @@ export function Cart({
   saving,
   editingItemIndex = null,
   onEditItem,
-  onRemoveItem
+  onRemoveItem,
+  emptyMessage = "Aún no hay archivos sumados"
 }: CartProps) {
   const {
     items,
@@ -102,7 +104,7 @@ export function Cart({
         <div className="space-y-3 flex-1 overflow-y-auto max-h-[40vh] mb-6">
           {items.length === 0 ? (
             <div className="text-center py-10 text-slate-300 italic text-sm">
-              Aún no hay archivos sumados
+              {emptyMessage}
             </div>
           ) : (
             items.map((item, idx) => (
