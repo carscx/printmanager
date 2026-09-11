@@ -2,26 +2,37 @@ import {
   forwardRef,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
   type RefObject
 } from "react";
 import { addCalendarDaysFromTodayAR } from "../../utils/dateAr";
 
-const DIAS_DEFAULT = 5;
+export type FechaEntregaVariante = "impresion" | "producto";
 
-const QUICK = [
-  { dias: 5, label: "Próximos 5 días" },
-  { dias: 7, label: "Próximos 7 días" },
-  { dias: 10, label: "Próximos 10 días" }
-] as const;
+const PRESETS: Record<
+  FechaEntregaVariante,
+  readonly { dias: number; label: string }[]
+> = {
+  impresion: [
+    { dias: 1, label: "Mañana" },
+    { dias: 2, label: "Próximos dos días" },
+    { dias: 4, label: "Próximos 4 días" }
+  ],
+  producto: [
+    { dias: 5, label: "Próximos 5 días" },
+    { dias: 7, label: "Próximos 7 días" },
+    { dias: 10, label: "Próximos 10 días" }
+  ]
+};
+
+const DIAS_DEFAULT: Record<FechaEntregaVariante, number> = {
+  impresion: 1,
+  producto: 5
+};
 
 function fechaRapida(dias: number): string {
   return addCalendarDaysFromTodayAR(dias);
-}
-
-function esFechaRapida(value: string): boolean {
-  if (!value) return false;
-  return QUICK.some(({ dias }) => fechaRapida(dias) === value);
 }
 
 export interface FechaEntregaSelectorProps {
@@ -30,16 +41,31 @@ export interface FechaEntregaSelectorProps {
   error?: boolean;
   fechaInputRef?: RefObject<HTMLInputElement | null>;
   onClearError?: () => void;
+  /** Impresión: mañana / 2 / 4 días. Producto cerrado: 5 / 7 / 10 días. */
+  variante?: FechaEntregaVariante;
 }
 
 export const FechaEntregaSelector = forwardRef<
   HTMLDivElement,
   FechaEntregaSelectorProps
 >(function FechaEntregaSelector(
-  { value, onChange, error, fechaInputRef, onClearError },
+  {
+    value,
+    onChange,
+    error,
+    fechaInputRef,
+    onClearError,
+    variante = "impresion"
+  },
   ref
 ) {
+  const quick = PRESETS[variante];
   const [personalizado, setPersonalizado] = useState(false);
+
+  const esFechaRapida = useMemo(() => {
+    if (!value) return false;
+    return quick.some(({ dias }) => fechaRapida(dias) === value);
+  }, [value, quick]);
 
   useLayoutEffect(() => {
     if (error) setPersonalizado(true);
@@ -47,14 +73,14 @@ export const FechaEntregaSelector = forwardRef<
 
   useEffect(() => {
     if (value || error) return;
-    onChange(fechaRapida(DIAS_DEFAULT));
-  }, [value, error, onChange]);
+    onChange(fechaRapida(DIAS_DEFAULT[variante]));
+  }, [variante, value, error, onChange]);
 
   useEffect(() => {
     if (!value) {
       if (!error) setPersonalizado(false);
-    } else if (!esFechaRapida(value)) setPersonalizado(true);
-  }, [value, error]);
+    } else if (!esFechaRapida) setPersonalizado(true);
+  }, [value, error, esFechaRapida]);
 
   useLayoutEffect(() => {
     if (!error || !personalizado) return;
@@ -77,13 +103,16 @@ export const FechaEntregaSelector = forwardRef<
     ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900"
     : "border-blue-100 bg-blue-50/30 text-blue-900 focus:ring-2 focus:ring-blue-200";
 
+  const personalizadoClass =
+    variante === "impresion" ? "col-span-2 sm:col-span-1" : "";
+
   return (
     <div
       ref={ref}
       className={`space-y-3 rounded-sm ${error ? "ring-2 ring-red-200/80 p-1 -m-1" : ""}`}
     >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {QUICK.map(({ dias, label }) => {
+        {quick.map(({ dias, label }) => {
           const f = fechaRapida(dias);
           const active = !personalizado && value === f;
           return (
@@ -104,7 +133,7 @@ export const FechaEntregaSelector = forwardRef<
         <button
           type="button"
           onClick={openPersonalizado}
-          className={`py-3 px-2 rounded-sm text-[10px] font-black uppercase tracking-wide border-2 transition-all ${
+          className={`py-3 px-2 rounded-sm text-[10px] font-black uppercase tracking-wide border-2 transition-all ${personalizadoClass} ${
             personalizado
               ? "border-violet-600 bg-violet-600 text-white"
               : "border-slate-100 bg-white text-slate-600 hover:border-slate-200"

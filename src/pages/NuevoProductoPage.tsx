@@ -458,6 +458,7 @@ export function NuevoProductoPage() {
               </span>
             </span>
             <FechaEntregaSelector
+              variante="producto"
               value={cart.fechaEntrega}
               onChange={(f) => {
                 cart.setFechaEntrega(f);
