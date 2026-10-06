@@ -1,24 +1,12 @@
-import { sb } from "../config/supabase";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../config/apiClient";
 import type { CategoriaGastoFijo, GastoFijo } from "../types/gastoFijo";
 
 export async function fetchGastosFijos(): Promise<GastoFijo[]> {
-  const { data, error } = await sb
-    .from("gastos_fijos")
-    .select("*")
-    .order("categoria", { ascending: true })
-    .order("concepto", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as GastoFijo[];
+  return apiGet("/gastos-fijos");
 }
 
 export async function fetchGastosFijosActivos(): Promise<GastoFijo[]> {
-  const { data, error } = await sb
-    .from("gastos_fijos")
-    .select("*")
-    .eq("activo", true)
-    .order("concepto", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as GastoFijo[];
+  return apiGet("/gastos-fijos?activos=true");
 }
 
 export function sumaMontosActivos(rows: GastoFijo[]): number {
@@ -27,7 +15,6 @@ export function sumaMontosActivos(rows: GastoFijo[]): number {
     .reduce((s, r) => s + Number(r.monto ?? 0), 0);
 }
 
-/** Suma categorías amortización + sueldo (retiro sugerido). */
 export function sumaRetiroCategorias(rows: GastoFijo[]): number {
   return rows
     .filter(
@@ -45,14 +32,13 @@ export async function insertGastoFijo(payload: {
   dia_vencimiento: number | null;
   activo?: boolean;
 }): Promise<void> {
-  const { error } = await sb.from("gastos_fijos").insert({
+  await apiPost("/gastos-fijos", {
     concepto: payload.concepto.trim(),
     monto: payload.monto,
     categoria: payload.categoria,
     dia_vencimiento: payload.dia_vencimiento,
     activo: payload.activo ?? true
   });
-  if (error) throw error;
 }
 
 export async function updateGastoFijo(
@@ -64,14 +50,9 @@ export async function updateGastoFijo(
     >
   >
 ): Promise<void> {
-  const { error } = await sb
-    .from("gastos_fijos")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  await apiPatch(`/gastos-fijos/${id}`, patch);
 }
 
 export async function deleteGastoFijo(id: string): Promise<void> {
-  const { error } = await sb.from("gastos_fijos").delete().eq("id", id);
-  if (error) throw error;
+  await apiDelete(`/gastos-fijos/${id}`);
 }

@@ -27,3 +27,6 @@ dist-ssr
 evolution-api/
 .env
 .cursorrules
+backups/
+*.dump
+prod_data.sql

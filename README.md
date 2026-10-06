@@ -69,8 +69,10 @@ Eso crea `node_modules/` y genera o actualiza **`package-lock.json`**.
 
 ## Otros directorios
 
+- **`api/`** — API NestJS (JWT + PostgreSQL). Ver `docker-compose.yml`.
+- **`sql/`** — scripts SQL canónicos; instalación self-host en `sql/selfhost/`.
+- **`scripts/`** — backup/restore desde Supabase y cutover (`scripts/CUTOVER.md`).
 - **`evolution-api/`** — otro proyecto con su propio `package.json`; sus dependencias se instalan **dentro de esa carpeta**, no en la raíz.
-- **`sql/`** — scripts SQL para Supabase (ver `sql/README.md`).
 
 ## PWA y caché del Service Worker
 

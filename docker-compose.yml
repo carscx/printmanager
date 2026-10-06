@@ -1,7 +1,56 @@
 services:
-  printmanager:
-    image: ghcr.io/tu-usuario/printmanager:latest
-    container_name: printmanager-app
-    ports:
-      - "3010:80"
+  db:
+    image: postgres:16-alpine
+    container_name: printmanager-db
     restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-printmanager}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-printmanager}
+      POSTGRES_DB: ${POSTGRES_DB:-printmanager}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/selfhost/docker-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+      - ./sql:/sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-printmanager} -d ${POSTGRES_DB:-printmanager}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-printmanager-api:local}
+    container_name: printmanager-api
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-printmanager}:${POSTGRES_PASSWORD:-printmanager}@db:5432/${POSTGRES_DB:-printmanager}
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    expose:
+      - "3001"
+
+  printmanager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    image: ${APP_IMAGE:-printmanager-app:local}
+    container_name: printmanager-app
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "${APP_PORT:-3010}:80"
+
+volumes:
+  pgdata:

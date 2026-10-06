@@ -1,4 +1,5 @@
-import { sb } from "../config/supabase";
+import { apiGet, apiPost } from "../config/apiClient";
+import type { Insumo } from "../types/insumo";
 
 export interface LineaCubrimiento {
   insumo_id: string;
@@ -14,35 +15,33 @@ export interface LineaCubrimiento {
 export async function fetchCubrimientoStockPedido(
   pedidoId: string
 ): Promise<{ ok: boolean; lineas: LineaCubrimiento[] }> {
-  const { data: items, error: e1 } = await sb
-    .from("pedido_items")
-    .select("id")
-    .eq("pedido_id", pedidoId);
-  if (e1) throw e1;
-  const itemIds = (items ?? []).map((r) => (r as { id: string }).id);
+  const pedido = await apiGet<{
+    pedido_items?: { id: string }[];
+  }>(`/pedidos/${pedidoId}`);
+  const itemIds = (pedido?.pedido_items ?? []).map((r) => r.id).filter(Boolean);
   if (itemIds.length === 0) return { ok: true, lineas: [] };
 
-  const { data: pii, error: e2 } = await sb
-    .from("pedido_items_insumos")
-    .select("insumo_id, cantidad, insumos(nombre, stock_actual)")
-    .in("pedido_item_id", itemIds);
-  if (e2) throw e2;
+  const pii = await apiPost<
+    {
+      insumo_id: string;
+      cantidad: number;
+    }[]
+  >("/pedidos/consumo-insumos", { itemIds });
+
+  const insumos = await apiGet<Insumo[]>("/insumos?soloActivos=false");
+  const byInsumoMeta = new Map(insumos.map((i) => [i.id, i]));
 
   const byInsumo = new Map<
     string,
     { nombre: string; necesario: number; stock: number }
   >();
 
-  for (const row of pii ?? []) {
-    const r = row as unknown as {
-      insumo_id: string;
-      cantidad: number;
-      insumos: { nombre: string; stock_actual: number } | null;
-    };
+  for (const r of pii ?? []) {
     const id = r.insumo_id;
     const qty = Number(r.cantidad) || 0;
-    const nombre = r.insumos?.nombre ?? id.slice(0, 8);
-    const stock = Number(r.insumos?.stock_actual) ?? 0;
+    const meta = byInsumoMeta.get(id);
+    const nombre = meta?.nombre ?? id.slice(0, 8);
+    const stock = Number(meta?.stock_actual) ?? 0;
     const cur = byInsumo.get(id);
     if (cur) cur.necesario += qty;
     else byInsumo.set(id, { nombre, necesario: qty, stock });
