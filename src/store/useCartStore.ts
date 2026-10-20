@@ -14,6 +14,7 @@ import {
   totalVentaPedido
 } from "../utils/pedidoTotalVenta";
 import type { FormaPagoCobro } from "../utils/pedidoFormaPago";
+import { toCalendarDateYmd } from "../utils/dateAr";
 
 export interface CartState {
   items: PedidoItem[];
@@ -135,7 +136,7 @@ export const useCartStore = create<CartState>()(
           estadoEdicion: normalizarEstadoPedido(p.estado),
           items: normalizePedidoItemsForCart(p.pedido_items ?? []),
           clienteNombre: p.cliente ?? "",
-          fechaEntrega: p.fecha_entrega ?? "",
+          fechaEntrega: toCalendarDateYmd(p.fecha_entrega),
           observaciones: p.observaciones ?? "",
           vendedorId: p.vendedor_id ?? null,
           tipoPago,

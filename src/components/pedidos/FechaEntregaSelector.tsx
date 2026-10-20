@@ -6,7 +6,10 @@ import {
   useState,
   type RefObject
 } from "react";
-import { addCalendarDaysFromTodayAR } from "../../utils/dateAr";
+import {
+  addCalendarDaysFromTodayAR,
+  toCalendarDateYmd
+} from "../../utils/dateAr";
 
 export type FechaEntregaVariante = "impresion" | "producto";
 
@@ -61,11 +64,12 @@ export const FechaEntregaSelector = forwardRef<
 ) {
   const quick = PRESETS[variante];
   const [personalizado, setPersonalizado] = useState(false);
+  const valueYmd = useMemo(() => toCalendarDateYmd(value), [value]);
 
   const esFechaRapida = useMemo(() => {
-    if (!value) return false;
-    return quick.some(({ dias }) => fechaRapida(dias) === value);
-  }, [value, quick]);
+    if (!valueYmd) return false;
+    return quick.some(({ dias }) => fechaRapida(dias) === valueYmd);
+  }, [valueYmd, quick]);
 
   useLayoutEffect(() => {
     if (error) setPersonalizado(true);
@@ -95,7 +99,7 @@ export const FechaEntregaSelector = forwardRef<
 
   const openPersonalizado = () => {
     setPersonalizado(true);
-    if (!value) onChange(fechaRapida(0));
+    onChange(fechaRapida(0));
     onClearError?.();
   };
 
@@ -149,7 +153,7 @@ export const FechaEntregaSelector = forwardRef<
           id="pedido-fecha-entrega"
           type="date"
           name="fecha_entrega"
-          value={value}
+          value={valueYmd}
           onChange={(e) => {
             onChange(e.target.value);
             onClearError?.();

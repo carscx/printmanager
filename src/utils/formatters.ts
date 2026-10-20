@@ -1,3 +1,5 @@
+import { toCalendarDateYmd } from "./dateAr";
+
 export function formatCurrency(amount: number | string | null | undefined): string {
   const n = Number(amount);
   return `$${(Number.isFinite(n) ? n : 0).toLocaleString("es-AR")}`;
@@ -8,5 +10,9 @@ export function formatDate(dateStr: string): string {
 }
 
 export function formatDateFromInput(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("es-AR");
+  const ymd = toCalendarDateYmd(dateStr);
+  if (!ymd) return "";
+  const d = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-AR");
 }
