@@ -1,9 +1,10 @@
-import type {
-  PrecioImpresion,
-  PrecioAnillado,
-  ConfigCosto,
-  PerfilTintaImpresion,
-  SlugLineaImpresion
+import {
+  precioImpresionActivoParaTipo,
+  type PrecioImpresion,
+  type PrecioAnillado,
+  type ConfigCosto,
+  type PerfilTintaImpresion,
+  type SlugLineaImpresion
 } from "../types/precio";
 import type { Insumo } from "../types/insumo";
 import type { Equipo } from "../types/equipo";
@@ -64,18 +65,6 @@ export interface ResultadoItem {
 }
 
 // ── Helpers internos ────────────────────────────────────────────────────────
-
-function encontrarPrecioImpresion(
-  precios: PrecioImpresion[],
-  tipo: SlugLineaImpresion,
-  dobleFaz: boolean
-): number {
-  const precio = precios.find(
-    (p) =>
-      p.activo !== false && p.tipo === tipo && p.doble_faz === dobleFaz
-  );
-  return precio?.precio_venta ?? 0;
-}
 
 function precioVentaAnillado(
   precios: PrecioAnillado[],
@@ -186,12 +175,14 @@ export const costEngine = {
       descuento_global_porcentaje,
       recargo_global_porcentaje
     } = params;
-    const hojas = doble_faz ? Math.ceil(paginas / 2) : paginas;
-    const precioHoja = encontrarPrecioImpresion(
+    const tarifa = precioImpresionActivoParaTipo(
       preciosImpresion,
       tipo,
       doble_faz
     );
+    const faz = tarifa ? tarifa.doble_faz : doble_faz;
+    const hojas = faz ? Math.ceil(paginas / 2) : paginas;
+    const precioHoja = tarifa?.precio_venta ?? 0;
 
     let impresion = !solo_anillado && paginas > 0 ? hojas * precioHoja : 0;
     let anillado =

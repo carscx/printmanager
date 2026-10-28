@@ -138,21 +138,35 @@ export function NuevoPedidoPage() {
 
   /** Líneas con al menos una tarifa activa (slug + etiqueta para el cotizador). */
   const lineasImpresionOpciones = useMemo(() => {
-    const m = new Map<string, string>();
+    const grupos = new Map<string, typeof preciosImpresion>();
     for (const p of preciosImpresion) {
       if (p.activo === false) continue;
-      const slug = p.tipo;
-      if (!m.has(slug)) {
-        m.set(
-          slug,
-          (p.nombre ?? "").trim() || labelSlugLineaImpresion(slug)
-        );
-      }
+      const list = grupos.get(p.tipo) ?? [];
+      list.push(p);
+      grupos.set(p.tipo, list);
     }
-    return [...m.entries()]
-      .map(([slug, label]) => ({ slug, label }))
+    return [...grupos.entries()]
+      .map(([slug, rows]) => {
+        const base =
+          (rows.find((r) => (r.nombre ?? "").trim())?.nombre ?? "").trim() ||
+          labelSlugLineaImpresion(slug);
+        const label =
+          rows.length === 1
+            ? `${base} · ${rows[0].doble_faz ? "Doble faz" : "Simple faz"}`
+            : base;
+        return { slug, label };
+      })
       .sort((a, b) => a.label.localeCompare(b.label, "es"));
   }, [preciosImpresion]);
+
+  /** Línea con una sola cara (120 simple o 120 doble cargadas como tarifa propia). */
+  const caraUnicaLinea = useMemo(() => {
+    const rows = preciosImpresion.filter(
+      (p) => p.activo !== false && p.tipo === tipo
+    );
+    return rows.length === 1 ? rows[0] : null;
+  }, [preciosImpresion, tipo]);
+  const dobleFazLinea = caraUnicaLinea ? caraUnicaLinea.doble_faz : dobleFaz;
 
   useEffect(() => {
     if (preciosLoading) return;
@@ -169,17 +183,13 @@ export function NuevoPedidoPage() {
       anilladoSel?.medida_mm ?? espiralSel?.medida_mm ?? null;
     const tarifaImp = soloAnillado
       ? null
-      : precioImpresionActivoParaTipo(
-          preciosImpresion,
-          tipo,
-          soloAnillado ? false : dobleFaz
-        );
+      : precioImpresionActivoParaTipo(preciosImpresion, tipo, dobleFaz);
     const params: CostoItemParams = {
       paginas,
       copias,
       tipo,
       perfil_tinta: perfilTintaEfectivo(tarifaImp),
-      doble_faz: soloAnillado ? false : dobleFaz,
+      doble_faz: soloAnillado ? false : (tarifaImp?.doble_faz ?? dobleFaz),
       anillado_mm,
       precio_anillado_id: anilladoSel?.id ?? null,
       solo_anillado: soloAnillado
@@ -451,7 +461,7 @@ export function NuevoPedidoPage() {
             const label =
               (precioImp?.nombre ?? "").trim() ||
               labelSlugLineaImpresion(tipo);
-            return `${label} ${dobleFaz ? "DF" : "SF"}`;
+            return `${label} ${precioImp?.doble_faz ? "DF" : "SF"}`;
           })(),
       anillado: anilladoSel
         ? labelAnillado(
@@ -466,7 +476,7 @@ export function NuevoPedidoPage() {
       precio_anillado_id: anilladoSel?.id ?? null,
       anillado_medida_mm:
         espiralSel?.medida_mm ?? anilladoSel?.medida_mm ?? null,
-      doble_faz: soloAnillado ? false : dobleFaz,
+      doble_faz: soloAnillado ? false : (precioImp?.doble_faz ?? dobleFaz),
       impreso: prevLine?.impreso ?? false,
       observaciones: itemNotas.trim(),
       _anillado_costo: anilladoSel ? anilladoSel.precio_venta : 0,
@@ -855,19 +865,31 @@ export function NuevoPedidoPage() {
             {/* Checkboxes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-5">
               <label
-                className={`flex items-center cursor-pointer bg-slate-50 p-4 rounded-sm border-2 transition-all shadow-sm ${
-                  dobleFaz && !soloAnillado ? "border-blue-500" : "border-transparent"
-                } ${soloAnillado ? "opacity-45 pointer-events-none" : ""}`}
+                className={`flex items-center bg-slate-50 p-4 rounded-sm border-2 transition-all shadow-sm ${
+                  dobleFazLinea && !soloAnillado ? "border-blue-500" : "border-transparent"
+                } ${
+                  soloAnillado
+                    ? "opacity-45 pointer-events-none"
+                    : caraUnicaLinea
+                      ? "cursor-default"
+                      : "cursor-pointer"
+                }`}
               >
                 <input
                   type="checkbox"
-                  checked={soloAnillado ? false : dobleFaz}
+                  checked={soloAnillado ? false : dobleFazLinea}
                   onChange={(e) => setDobleFaz(e.target.checked)}
-                  disabled={soloAnillado}
+                  disabled={soloAnillado || Boolean(caraUnicaLinea)}
                   className="w-6 h-6 text-blue-600 rounded"
                 />
                 <span className="ml-3 text-xs font-black text-slate-700 uppercase italic leading-none">
                   Doble faz
+                  {caraUnicaLinea && !soloAnillado && (
+                    <span className="block mt-1 text-[9px] font-semibold normal-case not-italic text-slate-500 tracking-normal">
+                      Esta línea ya es{" "}
+                      {caraUnicaLinea.doble_faz ? "doble faz" : "simple faz"}
+                    </span>
+                  )}
                 </span>
               </label>
               <label

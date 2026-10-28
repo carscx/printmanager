@@ -192,18 +192,22 @@ export function labelPrecioImpresionTarifa(p: PrecioImpresion): string {
   return n ? `${n} · ${base}` : base;
 }
 
-/** Tarifa usada en cotización: una activa por (tipo, doble_faz). */
+/**
+ * Tarifa de la línea en el cotizador.
+ * Si esa línea tiene una sola cara activa (p. ej. mate120 simple o mate120df),
+ * se usa esa fila aunque el tilde de doble faz no coincida.
+ * Si hay simple y doble, elige la cara pedida.
+ */
 export function precioImpresionActivoParaTipo(
   precios: PrecioImpresion[],
   tipo: SlugLineaImpresion,
   dobleFaz: boolean
 ): PrecioImpresion | undefined {
-  return precios.find(
-    (p) =>
-      p.activo !== false &&
-      p.tipo === tipo &&
-      p.doble_faz === dobleFaz
+  const delTipo = precios.filter(
+    (p) => p.activo !== false && p.tipo === tipo
   );
+  if (delTipo.length === 1) return delTipo[0];
+  return delTipo.find((p) => p.doble_faz === dobleFaz);
 }
 
 export function labelAnillado(
