@@ -52,6 +52,7 @@ Ejecutá **en este orden**:
 | 35 | `37_equipo_roi.sql` |
 | — | **`60_rls_audit_fix.sql`** — corrección RLS / alertas Security Advisor (ver abajo) |
 | — | **`61_productos_cerrados.sql`** — catálogo de productos cerrados (Agenda Semanal), BOM fijo y explosión por `producto_id` |
+| — | **`62_producto_cuaderno.sql`** — producto cerrado Cuaderno a $16.000, 100 hojas del mismo papel que la agenda |
 
 **Opcional (solo desarrollo / demo):** al final, `08_seed_datos_prueba.sql` (config, equipos, insumos demo, precios, plantillas, 3 pedidos). En **producción** suele omitirse o adaptarse para no pisar datos reales.
 
@@ -123,9 +124,11 @@ Si Security Advisor marca tablas **publicly accessible**:
 
 ---
 
-## Productos cerrados (`61`)
+## Productos cerrados (`61` y `62`)
 
 Después de `60`, ejecutá **`61_productos_cerrados.sql`** una vez (idempotente en tablas/seed). Crea `productos`, `productos_insumos`, `pedido_items.producto_id` y redefine `rpc_explotar_bom_pedido`. El precio y las hojas de Agenda Semanal se cargan en la app (**Precios → Productos**); el papel mate se elige entre insumos existentes.
+
+Después, ejecutá **`62_producto_cuaderno.sql`**. Deja el producto **Cuaderno** a **$16.000** y, si la agenda ya tiene papel, copia ese insumo con **100 hojas** por unidad. Si la agenda todavía no tiene papel, el cuaderno queda con precio y hay que elegir el mismo insumo en **Precios → Productos**. El script se puede volver a correr cuando la agenda ya tenga BOM.
 
 ---
 
