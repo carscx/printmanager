@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool, types } from 'pg';
 import { DatabaseService } from './database.service';
+import { SchemaMigrator } from './schema-migrator';
 
 // DATE de Postgres llega como YYYY-MM-DD. Si se parsea a Date, el JSON
 // se vuelve ISO y el mensaje de WhatsApp muestra "Invalid Date".
@@ -22,6 +23,7 @@ types.setTypeParser(types.builtins.DATE, (value: string) => value);
       },
     },
     DatabaseService,
+    SchemaMigrator,
   ],
   exports: [DatabaseService, 'PG_POOL'],
 })

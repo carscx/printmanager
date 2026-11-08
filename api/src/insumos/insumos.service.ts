@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { DatabaseError } from 'pg';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
@@ -30,11 +31,15 @@ export class InsumosService {
   async crear(input: Record<string, unknown>) {
     const cols = Object.keys(input);
     const vals = cols.map((k) => input[k]);
-    return this.db.one(
-      `INSERT INTO public.insumos (${cols.map((c) => `"${c}"`).join(',')})
-       VALUES (${cols.map((_, i) => `$${i + 1}`).join(',')}) RETURNING *`,
-      vals,
-    );
+    try {
+      return await this.db.one(
+        `INSERT INTO public.insumos (${cols.map((c) => `"${c}"`).join(',')})
+         VALUES (${cols.map((_, i) => `$${i + 1}`).join(',')}) RETURNING *`,
+        vals,
+      );
+    } catch (e) {
+      throw mapInsumoDbError(e);
+    }
   }
 
   async actualizar(id: string, input: Record<string, unknown>) {
@@ -142,4 +147,17 @@ export class InsumosService {
   async fetchAlertasStock() {
     return this.db.many(`SELECT * FROM public.v_insumos_alerta_stock`);
   }
+}
+
+function mapInsumoDbError(e: unknown): unknown {
+  if (
+    e instanceof DatabaseError &&
+    e.code === '23514' &&
+    e.constraint === 'insumos_categoria_check'
+  ) {
+    return new BadRequestException(
+      'La base no acepta la categoría pouch. Falta aplicar la migración de plastificado.',
+    );
+  }
+  return e;
 }
