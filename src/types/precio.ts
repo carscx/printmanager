@@ -133,8 +133,28 @@ export const CONFIG_COSTO_DESCRIPCIONES: Record<string, string> = {
   pago_alias: "Alias Mercado Pago",
   pago_cbu: "CBU",
   pago_titular: "Titular cuenta",
-  pago_banco: "Banco"
+  pago_banco: "Banco",
+  plastificado_precio_venta: "Precio de venta por unidad plastificada",
+  plastificado_costo_pouch: "Costo de referencia de un pouch de plastificado"
 };
+
+/** Precio de venta por cada unidad plastificada. */
+export const PLASTIFICADO_PRECIO_VENTA_KEY = "plastificado_precio_venta";
+/** Costo de referencia del pouch si el insumo todavía no tiene precio. */
+export const PLASTIFICADO_COSTO_POUCH_KEY = "plastificado_costo_pouch";
+export const PLASTIFICADO_PRECIO_VENTA_DEFAULT = 1000;
+export const PLASTIFICADO_COSTO_POUCH_DEFAULT = 300;
+
+export function numeroConfigCosto(
+  rows: ConfigCosto[],
+  key: string,
+  fallback: number
+): number {
+  const raw = rows.find((c) => c.key === key)?.value;
+  if (raw == null || String(raw).trim() === "") return fallback;
+  const n = Number(String(raw).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
 
 /**
  * Asegura que aparezcan todas las claves conocidas (p. ej. pago_* para WhatsApp)

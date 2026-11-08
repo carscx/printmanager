@@ -53,7 +53,9 @@ export function ConfigCostosPanel({ configCostos, onReload }: Props) {
       </div>
 
       <div className="divide-y divide-slate-50">
-        {configCostos.map((c) => (
+        {configCostos
+          .filter((c) => !c.key.startsWith("plastificado_"))
+          .map((c) => (
           <div
             key={c.key}
             className="flex items-center justify-between px-4 py-3 gap-3"

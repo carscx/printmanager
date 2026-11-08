@@ -7,6 +7,7 @@ import {
   esItemProductoCerrado,
   nombreProductoCerrado
 } from "../utils/pedidoItemProducto";
+import { etiquetaPlastificado } from "../utils/plastificado";
 
 type JsPDFWithPlugin = jsPDF & {
   lastAutoTable?: { finalY: number };
@@ -78,9 +79,12 @@ export function descargarPedidoControlPdf(
     head: [["Archivo", "Detalle", "Anillado", "Importe"]],
     body: items.map((it, i) => {
       const copias = it.copias ?? 1;
+      const plast = etiquetaPlastificado(it.unidades_plastificado);
       const detalle = esItemProductoCerrado(it)
         ? `${nombreProductoCerrado(it)}${copias > 1 ? ` x${copias}` : ""}`
-        : `${it.paginas || 0} pág${copias > 1 ? ` x${copias}` : ""} · ${it.tipo_impresion || "-"}`;
+        : `${it.paginas || 0} pág${copias > 1 ? ` x${copias}` : ""} · ${it.tipo_impresion || "-"}${
+            plast ? ` · ${plast}` : ""
+          }`;
       return [
         it.nombre_archivo || (esItemProductoCerrado(it) ? nombreProductoCerrado(it) : `Archivo ${i + 1}`),
         detalle,

@@ -15,6 +15,7 @@ import {
   esItemProductoCerrado,
   labelItemProductoCerrado
 } from "../../utils/pedidoItemProducto";
+import { etiquetaPlastificado } from "../../utils/plastificado";
 
 interface PedidoCardProps {
   pedido: Pedido;
@@ -285,6 +286,9 @@ export function PedidoCard({
                   {(it.copias ?? 1) > 1 ? `×${it.copias}` : ""} |{" "}
                   {it.tipo_impresion} |{" "}
                   {getAnilladoLabel(it.anillado, it.anillado_medida_mm)}
+                  {etiquetaPlastificado(it.unidades_plastificado)
+                    ? ` | ${etiquetaPlastificado(it.unidades_plastificado)}`
+                    : ""}
                 </>
               )}
               {it.descuento_porcentaje != null &&

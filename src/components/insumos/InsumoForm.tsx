@@ -106,6 +106,7 @@ const DEFAULT_UNIDAD: Record<string, InsumoUnidad> = {
   bolsa: "unidad",
   bolsa_propileno: "unidad",
   clip: "unidad",
+  pouch: "unidad",
   otro: "unidad"
 };
 

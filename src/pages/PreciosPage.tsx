@@ -10,8 +10,15 @@ import { ConfiguracionNegocioPanel } from "../components/precios/ConfiguracionNe
 import { ReglasNegocioPanel } from "../components/precios/ReglasNegocioPanel.tsx";
 import { AjusteMasivoSheet } from "../components/precios/AjusteMasivoSheet.tsx";
 import { ProductosCerradosPanel } from "../components/precios/ProductosCerradosPanel.tsx";
+import { PlastificadoPreciosPanel } from "../components/precios/PlastificadoPreciosPanel.tsx";
 
-type SeccionActiva = "impresion" | "anillado" | "productos" | "reglas" | "costos";
+type SeccionActiva =
+  | "impresion"
+  | "anillado"
+  | "plastificado"
+  | "productos"
+  | "reglas"
+  | "costos";
 
 interface PreciosPageProps {
   /** Operador: ve los precios pero no puede editarlos. */
@@ -61,6 +68,7 @@ export function PreciosPage({ soloLectura = false }: PreciosPageProps) {
   const secciones: { id: SeccionActiva; label: string; icon: string }[] = [
     { id: "impresion", label: "Impresión", icon: "fa-print" },
     { id: "anillado", label: "Anillado", icon: "fa-ring" },
+    { id: "plastificado", label: "Plastificado", icon: "fa-clone" },
     { id: "productos", label: "Productos", icon: "fa-box" },
     { id: "reglas", label: "Reglas de negocio", icon: "fa-diagram-project" },
     { id: "costos", label: "Pagos / resumen", icon: "fa-sliders" }
@@ -93,6 +101,14 @@ export function PreciosPage({ soloLectura = false }: PreciosPageProps) {
           insumos={insumos}
           equipos={equipos}
           costosListos={!loadingCostos}
+        />
+      )}
+
+      {seccion === "plastificado" && (
+        <PlastificadoPreciosPanel
+          configCostos={configCostos}
+          insumos={insumos}
+          onReload={reload}
         />
       )}
 

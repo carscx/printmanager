@@ -4,6 +4,7 @@ import {
   esItemProductoCerrado,
   labelItemProductoCerrado
 } from "../../utils/pedidoItemProducto";
+import { etiquetaPlastificado } from "../../utils/plastificado";
 
 interface ItemRowProps {
   item: PedidoItem;
@@ -54,6 +55,7 @@ export function ItemRow({
         className="bg-red-100 text-red-700 text-[8px]"
       />
     );
+  const plastLabel = etiquetaPlastificado(item.unidades_plastificado);
 
   return (
     <div
@@ -87,6 +89,12 @@ export function ItemRow({
             <Badge
               text="ANILLADO"
               className="bg-amber-100 text-amber-700 text-[8px]"
+            />
+          )}
+          {plastLabel && (
+            <Badge
+              text={plastLabel.toUpperCase()}
+              className="bg-sky-100 text-sky-800 text-[8px]"
             />
           )}
           {descRecBadges}

@@ -34,6 +34,13 @@ import {
   parseTipoImpresionFromItem
 } from "../utils/pedidoItemForm";
 import { VolverButton } from "../components/ui/VolverButton";
+import {
+  costoPouchEfectivo,
+  etiquetaPlastificado,
+  parseUnidadesPlastificado,
+  pouchActivo,
+  precioVentaPlastificado
+} from "../utils/plastificado";
 
 const ESTADO_EDICION_OPTS: { value: EstadoPedido; label: string }[] = [
   { value: "presupuesto", label: "Presupuesto" },
@@ -54,6 +61,7 @@ export function NuevoPedidoPage() {
   const {
     preciosImpresion,
     preciosAnillado,
+    configCostos,
     loading: preciosLoading
   } = usePrecios();
   const { insumos, loading: costosLoading } = useDatosCosto();
@@ -76,6 +84,9 @@ export function NuevoPedidoPage() {
   const [dobleFaz, setDobleFaz] = useState(false);
   /** Incluye espiral; elegís el insumo (medida + rango) y el precio sigue la tarifa. */
   const [conAnillado, setConAnillado] = useState(false);
+  /** Plastificado opcional: la cantidad empieza vacía y no sigue a las copias. */
+  const [conPlastificado, setConPlastificado] = useState(false);
+  const [unidadesPlastificado, setUnidadesPlastificado] = useState("");
   /** Cliente trae copias ya impresas: solo se cobra anillado (sin tarifa de impresión). */
   const [soloAnillado, setSoloAnillado] = useState(false);
   const [espiralInsumoId, setEspiralInsumoId] = useState<string | null>(null);
@@ -111,6 +122,19 @@ export function NuevoPedidoPage() {
     () => espirales.find((e) => e.id === espiralInsumoId) ?? null,
     [espirales, espiralInsumoId]
   );
+
+  const precioPlastificado = useMemo(
+    () => precioVentaPlastificado(configCostos),
+    [configCostos]
+  );
+  const pouchSel = useMemo(() => pouchActivo(insumos), [insumos]);
+  const costoPouch = useMemo(
+    () => costoPouchEfectivo(insumos, configCostos),
+    [insumos, configCostos]
+  );
+  const unidadesPlastificadoNum = conPlastificado
+    ? parseUnidadesPlastificado(unidadesPlastificado)
+    : null;
 
   const tarifaAnillado = useMemo(() => {
     if (!conAnillado || paginas < 1) return null;
@@ -192,7 +216,10 @@ export function NuevoPedidoPage() {
       doble_faz: soloAnillado ? false : (tarifaImp?.doble_faz ?? dobleFaz),
       anillado_mm,
       precio_anillado_id: anilladoSel?.id ?? null,
-      solo_anillado: soloAnillado
+      solo_anillado: soloAnillado,
+      unidades_plastificado: unidadesPlastificadoNum ?? 0,
+      precio_unitario_plastificado: precioPlastificado,
+      costo_unitario_plastificado: costoPouch
     };
     if (showDescRec && descRecValor) {
       const val = Number(descRecValor);
@@ -223,7 +250,10 @@ export function NuevoPedidoPage() {
     descRecValor,
     descRecTipo,
     descRecModo,
-    soloAnillado
+    soloAnillado,
+    unidadesPlastificadoNum,
+    precioPlastificado,
+    costoPouch
   ]);
 
   /** Perfil del usuario logueado (nuevo pedido) o del vendedor del pedido (edición). */
@@ -287,6 +317,8 @@ export function NuevoPedidoPage() {
     setTipo(first);
     setDobleFaz(false);
     setConAnillado(false);
+    setConPlastificado(false);
+    setUnidadesPlastificado("");
     setSoloAnillado(false);
     setEspiralInsumoId(null);
     setItemNotas("");
@@ -336,6 +368,14 @@ export function NuevoPedidoPage() {
     } else {
       setSoloAnillado(false);
       setConAnillado(Boolean(it.anillado));
+    }
+    const unidades = Number(it.unidades_plastificado ?? 0);
+    if (Number.isFinite(unidades) && unidades > 0) {
+      setConPlastificado(true);
+      setUnidadesPlastificado(String(Math.trunc(unidades)));
+    } else {
+      setConPlastificado(false);
+      setUnidadesPlastificado("");
     }
     const needsSpiral = Boolean(it.solo_anillado || it.anillado);
     if (needsSpiral) {
@@ -403,6 +443,20 @@ export function NuevoPedidoPage() {
     }
     const anilladoSel = tarifaAnillado;
     const requiereTarifaAnillado = conAnillado || soloAnillado;
+    if (conPlastificado && unidadesPlastificadoNum == null) {
+      setErrPaginas(false);
+      setErrCliente(false);
+      setErrFecha(false);
+      showToast("INDICÁ LAS UNIDADES PLASTIFICADAS", "error");
+      return;
+    }
+    if (conPlastificado && !pouchSel) {
+      showToast(
+        "NO HAY UN POUCH ACTIVO EN INSUMOS. CREÁ EL INSUMO O APLICÁ LA MIGRACIÓN DE PLASTIFICADO",
+        "error"
+      );
+      return;
+    }
     if (requiereTarifaAnillado && !anilladoSel) {
       setErrPaginas(true);
       setErrCliente(false);
@@ -476,6 +530,7 @@ export function NuevoPedidoPage() {
       precio_anillado_id: anilladoSel?.id ?? null,
       anillado_medida_mm:
         espiralSel?.medida_mm ?? anilladoSel?.medida_mm ?? null,
+      unidades_plastificado: unidadesPlastificadoNum ?? 0,
       doble_faz: soloAnillado ? false : (precioImp?.doble_faz ?? dobleFaz),
       impreso: prevLine?.impreso ?? false,
       observaciones: itemNotas.trim(),
@@ -1003,6 +1058,90 @@ export function NuevoPedidoPage() {
                 </p>
               </div>
             )}
+
+            <div className="space-y-2">
+              <label
+                className={`flex items-center justify-between gap-3 cursor-pointer bg-slate-50 p-4 rounded-sm border-2 transition-all shadow-sm ${
+                  conPlastificado ? "border-sky-500" : "border-transparent"
+                }`}
+              >
+                <span className="text-xs font-black text-slate-700 uppercase italic leading-none">
+                  Plastificado
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={conPlastificado}
+                  onClick={() => {
+                    setConPlastificado((v) => {
+                      if (v) setUnidadesPlastificado("");
+                      return !v;
+                    });
+                  }}
+                  className={`relative w-14 h-8 rounded-full transition-colors shrink-0 ${
+                    conPlastificado ? "bg-sky-500" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                      conPlastificado ? "translate-x-6" : ""
+                    }`}
+                  />
+                </button>
+              </label>
+              {conPlastificado && (
+                <div className="space-y-1 px-1">
+                  <label
+                    htmlFor="unidades-plastificado"
+                    className="text-[10px] font-black text-slate-400 ml-1 uppercase block"
+                  >
+                    Unidades plastificadas
+                  </label>
+                  <input
+                    id="unidades-plastificado"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    value={unidadesPlastificado}
+                    onChange={(e) => setUnidadesPlastificado(e.target.value)}
+                    placeholder="Cantidad"
+                    className="w-full p-3 bg-sky-50/80 rounded-sm font-bold text-sm border border-sky-100 text-slate-800"
+                  />
+                  <p className="text-[10px] text-slate-500 font-semibold leading-snug">
+                    Cada unidad sale {formatCurrency(precioPlastificado)} y
+                    consume 1 pouch
+                    {costoPouch > 0
+                      ? ` (costo ${formatCurrency(costoPouch)})`
+                      : ""}
+                    .
+                    {unidadesPlastificadoNum != null && (
+                      <>
+                        {" "}
+                        {etiquetaPlastificado(unidadesPlastificadoNum)}:{" "}
+                        <strong className="text-sky-800">
+                          {formatCurrency(
+                            unidadesPlastificadoNum * precioPlastificado
+                          )}
+                        </strong>
+                        .
+                      </>
+                    )}
+                    {pouchSel ? (
+                      <span className="block mt-1 text-slate-400">
+                        Stock de {pouchSel.nombre}:{" "}
+                        {Number(pouchSel.stock_actual) || 0}.
+                      </span>
+                    ) : (
+                      <span className="block mt-1 text-amber-700">
+                        No hay un pouch activo en insumos: no se puede agregar
+                        la línea hasta crearlo.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Date */}
             <div className="space-y-1 scroll-mt-28">

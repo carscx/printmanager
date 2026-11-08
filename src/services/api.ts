@@ -32,6 +32,10 @@ function mapItemToDB(it: PedidoItem, _pedidoId: string) {
     precio_impresion_id: it.precio_impresion_id ?? null,
     precio_anillado_id: it.precio_anillado_id ?? null,
     anillado_medida_mm: it.anillado_medida_mm ?? null,
+    unidades_plastificado: Math.max(
+      0,
+      Math.trunc(Number(it.unidades_plastificado) || 0)
+    ),
     doble_faz: it.doble_faz ?? false,
     impreso: it.impreso ?? false,
     ...(it.producto_id ? { producto_id: it.producto_id } : {})

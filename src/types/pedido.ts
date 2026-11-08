@@ -14,6 +14,8 @@ export interface PedidoItem {
   precio_impresion_id?: string | null;
   precio_anillado_id?: string | null;
   anillado_medida_mm?: number | null;
+  /** Unidades plastificadas. Cada una suma el precio de venta y consume un pouch. */
+  unidades_plastificado?: number | null;
   doble_faz?: boolean;
   /** Flag operativo para trabajos de impresión: no impacta estado del pedido. */
   impreso?: boolean;

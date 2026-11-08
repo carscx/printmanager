@@ -36,6 +36,10 @@ function mapItemToDb(it: Record<string, unknown>, pedidoId: string) {
     precio_impresion_id: it.precio_impresion_id ?? null,
     precio_anillado_id: it.precio_anillado_id ?? null,
     anillado_medida_mm: it.anillado_medida_mm ?? null,
+    unidades_plastificado: Math.max(
+      0,
+      Math.trunc(Number(it.unidades_plastificado) || 0),
+    ),
     doble_faz: it.doble_faz ?? false,
     impreso: it.impreso ?? false,
     producto_id: it.producto_id ?? null,
@@ -307,9 +311,10 @@ export class PedidosService {
           pedido_id, nombre_archivo, paginas, copias, tipo_impresion, anillado,
           precio_unitario, observaciones, descuento_porcentaje, descuento_monto,
           recargo_porcentaje, recargo_monto, solo_anillado, precio_impresion_id,
-          precio_anillado_id, anillado_medida_mm, doble_faz, impreso, producto_id
+          precio_anillado_id, anillado_medida_mm, unidades_plastificado, doble_faz,
+          impreso, producto_id
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
         )`,
         [
           m.pedido_id,
@@ -328,6 +333,7 @@ export class PedidosService {
           m.precio_impresion_id,
           m.precio_anillado_id,
           m.anillado_medida_mm,
+          m.unidades_plastificado,
           m.doble_faz,
           m.impreso,
           m.producto_id,

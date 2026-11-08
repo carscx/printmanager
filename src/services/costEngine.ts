@@ -29,6 +29,12 @@ export interface CostoItemParams {
   /** Si está definido, usa esta fila del tarifario (evita ambigüedad por medida). */
   precio_anillado_id?: string | null;
   solo_anillado: boolean;
+  /** Unidades plastificadas de la línea (no se multiplican por copias). */
+  unidades_plastificado?: number;
+  /** Precio de venta por unidad plastificada. */
+  precio_unitario_plastificado?: number;
+  /** Costo de un pouch. */
+  costo_unitario_plastificado?: number;
   // Descuentos y recargos
   descuento_porcentaje?: number | null;
   descuento_monto?: number | null;
@@ -41,6 +47,7 @@ export interface CostoItemParams {
 export interface DesgloseVenta {
   impresion: number;
   anillado: number;
+  plastificado: number;
   porCopia: number;
   total: number;
 }
@@ -53,6 +60,7 @@ export interface DesgloseCosto {
   tapaTransparente: number;
   tapaColor: number;
   bolsa: number;
+  pouch: number;
   porCopia: number;
   total: number;
 }
@@ -168,6 +176,8 @@ export const costEngine = {
       anillado_mm,
       precio_anillado_id,
       solo_anillado,
+      unidades_plastificado,
+      precio_unitario_plastificado,
       descuento_porcentaje,
       descuento_monto,
       recargo_porcentaje,
@@ -208,6 +218,21 @@ export const costEngine = {
       porCopia += recargo_monto;
     }
     let total = Math.round(porCopia * copias);
+    const unidadesPlast = Math.max(
+      0,
+      Math.trunc(Number(unidades_plastificado) || 0)
+    );
+    const precioPlast = Number(precio_unitario_plastificado) || 0;
+    let plastificado =
+      unidadesPlast > 0 && precioPlast > 0 ? unidadesPlast * precioPlast : 0;
+    if (descuento_porcentaje && plastificado) {
+      plastificado -= plastificado * (descuento_porcentaje / 100);
+    }
+    if (recargo_porcentaje && plastificado) {
+      plastificado += plastificado * (recargo_porcentaje / 100);
+    }
+    plastificado = Math.round(plastificado);
+    total += plastificado;
     // Descuentos y recargos globales
     if (descuento_global_porcentaje) {
       total -= Math.round(total * (descuento_global_porcentaje / 100));
@@ -215,7 +240,7 @@ export const costEngine = {
     if (recargo_global_porcentaje) {
       total += Math.round(total * (recargo_global_porcentaje / 100));
     }
-    return { impresion, anillado, porCopia, total };
+    return { impresion, anillado, plastificado, porCopia, total };
   },
 
   /**
@@ -226,7 +251,15 @@ export const costEngine = {
     insumos: Insumo[],
     equipos: Equipo[]
   ): DesgloseCosto {
-    const { paginas, copias, doble_faz, anillado_mm, solo_anillado } = params;
+    const {
+      paginas,
+      copias,
+      doble_faz,
+      anillado_mm,
+      solo_anillado,
+      unidades_plastificado,
+      costo_unitario_plastificado
+    } = params;
     const hojas = doble_faz ? Math.ceil(paginas / 2) : paginas;
 
     // Costos de impresión (por copia): tinta/tóner por cara impresa (páginas PDF);
@@ -254,6 +287,14 @@ export const costEngine = {
       : 0;
     const bolsa = anillado_mm ? costoInsumoPorCategoria(insumos, "bolsa") : 0;
 
+    const unidadesPlast = Math.max(
+      0,
+      Math.trunc(Number(unidades_plastificado) || 0)
+    );
+    const costoPouch = Number(costo_unitario_plastificado) || 0;
+    const pouch =
+      unidadesPlast > 0 && costoPouch > 0 ? unidadesPlast * costoPouch : 0;
+
     const porCopia =
       papel +
       tinta +
@@ -262,7 +303,7 @@ export const costEngine = {
       tapaTransparente +
       tapaColor +
       bolsa;
-    const total = Math.round(porCopia * copias);
+    const total = Math.round(porCopia * copias + pouch);
 
     return {
       papel,
@@ -272,6 +313,7 @@ export const costEngine = {
       tapaTransparente,
       tapaColor,
       bolsa,
+      pouch,
       porCopia,
       total
     };

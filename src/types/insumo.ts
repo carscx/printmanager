@@ -9,6 +9,7 @@ export const INSUMO_CATEGORIAS = [
   "bolsa",
   "bolsa_propileno",
   "clip",
+  "pouch",
   "otro"
 ] as const;
 
@@ -24,6 +25,7 @@ export const INSUMO_CATEGORIA_LABELS: Record<InsumoCategoria, string> = {
   bolsa: "Bolsa",
   bolsa_propileno: "Bolsa Propileno",
   clip: "Clip",
+  pouch: "Pouch",
   otro: "Otro"
 };
 

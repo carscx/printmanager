@@ -10,6 +10,7 @@ import {
   detalleItemProductoCerrado,
   esItemProductoCerrado
 } from "../utils/pedidoItemProducto";
+import { etiquetaPlastificado } from "../utils/plastificado";
 
 interface RenderContext {
   pedido: Pedido;
@@ -74,6 +75,8 @@ function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
     const tipo = it.tipo_impresion || "B/N";
     const aniLabel = anilladoTextoCliente(it.anillado);
     const ani = aniLabel ? ` + ${aniLabel}` : "";
+    const plastLabel = etiquetaPlastificado(it.unidades_plastificado);
+    const plast = plastLabel ? ` + ${plastLabel}` : "";
     const copiasTxt = copias > 1 ? ` x${copias}` : "";
 
     const descParts: string[] = [];
@@ -85,7 +88,7 @@ function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
     }
 
     const descTxt = descParts.length ? ` · Desc: ${descParts.join(" / ")}` : "";
-    return `- ${paginas} pág ${tipo}${ani}${copiasTxt}${descTxt}`;
+    return `- ${paginas} pág ${tipo}${ani}${plast}${copiasTxt}${descTxt}`;
   });
 
   // Nota: mostramos solo descuentos; recargos no se incluyen en WhatsApp por pedido del negocio.

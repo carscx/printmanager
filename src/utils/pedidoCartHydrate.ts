@@ -20,6 +20,10 @@ export function normalizePedidoItemsForCart(items: PedidoItem[]): PedidoItem[] {
     precio_unitario: Number(raw.precio_unitario ?? 0),
     observaciones: raw.observaciones ?? "",
     solo_anillado: raw.solo_anillado ?? false,
+    unidades_plastificado: Math.max(
+      0,
+      Math.trunc(Number(raw.unidades_plastificado) || 0)
+    ),
     impreso: raw.impreso ?? false
   }));
 }
