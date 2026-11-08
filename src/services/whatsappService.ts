@@ -77,7 +77,7 @@ function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
     const ani = aniLabel ? ` + ${aniLabel}` : "";
     const plastLabel = etiquetaPlastificado(it.unidades_plastificado);
     const plast = plastLabel ? ` + ${plastLabel}` : "";
-    const copiasTxt = copias > 1 ? ` x${copias}` : "";
+    const copiasTxt = copias > 1 ? ` x${copias} copias` : "";
 
     const descParts: string[] = [];
     if (it.descuento_porcentaje != null && Number(it.descuento_porcentaje) > 0) {
@@ -88,7 +88,7 @@ function buildDetalle(pedido: Pedido, items: PedidoItem[]): string {
     }
 
     const descTxt = descParts.length ? ` · Desc: ${descParts.join(" / ")}` : "";
-    return `- ${paginas} pág ${tipo}${ani}${plast}${copiasTxt}${descTxt}`;
+    return `- ${paginas} pág ${tipo}${copiasTxt}${ani}${plast}${descTxt}`;
   });
 
   // Nota: mostramos solo descuentos; recargos no se incluyen en WhatsApp por pedido del negocio.
